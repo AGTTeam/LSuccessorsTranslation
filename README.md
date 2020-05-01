@@ -1,2 +1,11 @@
-# LSuccessorsTranslation
-Translation patch project for DEATH NOTE ~L wo Tsugumono~ on the NDS.
+# LSuccessors Translation
+**WORK IN PROGRESS**
+## Extract
+- [x] BIN
+- [x] DATA
+- [ ] DATA filenames (search in arm9?)
+- [ ] IMG
+## Repack
+- [ ] BIN
+- [ ] DATA
+- [ ] IMG
