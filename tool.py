@@ -1,7 +1,8 @@
 import os
 import click
+import archive
 import game
-from hacktools import common, nds
+from hacktools import common, nds, nitro
 
 version = "0.1.0"
 romfile = "data/dn2.nds"
@@ -21,12 +22,13 @@ def extract(rom, bin, img):
     all = not rom and not bin and not img
     if all or rom:
         nds.extractRom(romfile, infolder, outfolder)
-        import databin
-        databin.extract()
+        archive.extract()
     if all or bin:
-        nds.extractBIN(game.binrange, game.detectEncodedString)
-    # if all or img:
-    #    nitro.extractIMG("data/extract_DATA/", "data/out_IMG/")
+        import extract_bin
+        extract_bin.run()
+    if all or img:
+        # nitro.extractIMG("data/extract_DATA/", "data/out_IMG/", [".NCGR", ".ICHR"], game.readImage)
+        nitro.extractIMG("data/extract_DATA/", "data/out_IMG/", ".NCGR", game.readImage)
 
 
 @common.cli.command()
