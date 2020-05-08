@@ -34,10 +34,10 @@ def extract():
             extension = "bin"
             if magic in knownformats:
                 extension = knownformats[magic]
-            if i == 4 or i == 76:
+            if i == 4:
                 filei += 1
-            if extension == "NCLR" or extension == "IPAL" or extension == "bin":
-                if i != 5 and i != 77:
+            if extension == "NCLR" or (extension == "IPAL" and i >= 196) or (extension == "ICHR" and i < 196) or extension == "bin":
+                if i != 5:
                     filei += 1
             orig = filename = "file" + str(filei).zfill(5) + "." + extension
             if os.path.isfile(outfolder + filename):

@@ -28,7 +28,7 @@ def extract(rom, bin, img):
         extract_bin.run()
     if all or img:
         # nitro.extractIMG("data/extract_DATA/", "data/out_IMG/", [".NCGR", ".ICHR"], game.readImage)
-        nitro.extractIMG("data/extract_DATA/", "data/out_IMG/", ".NCGR", game.readImage)
+        nitro.extractIMG("data/extract_DATA/", "data/out_IMG/", ".ICHR", game.readImage)
 
 
 @common.cli.command()
