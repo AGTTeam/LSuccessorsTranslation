@@ -2,7 +2,7 @@ import struct
 import os
 from hacktools import common, nitro
 
-binrange = (445000, 884000)
+binrange = [(445000, 884000)]
 
 
 def detectEncodedString(f, encoding):

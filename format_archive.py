@@ -1,13 +1,13 @@
 import os
 from hacktools import common, nds
 
-
-infile = "data/extract/data/data/data.bin"
-outfolder = "data/extract_DATA/"
 knownformats = {"RNAN": "NANR", "RECN": "NCER", "RGCN": "NCGR", "RLCN": "NCLR", "ICHR": "ICHR", "IPAL": "IPAL", "ISCR": "ISCR"}
 
 
-def extract():
+def extract(data):
+    infile = data + "extract/data/data/data.bin"
+    outfolder = data + "extract_DATA/"
+
     common.logMessage("Extracting DATA ...")
     common.makeFolder(outfolder)
     with common.Stream(infile, "rb") as f:
@@ -22,12 +22,12 @@ def extract():
             f.seek(offset)
             compbyte = f.peek(1)[0]
             if compbyte == 0x10:
-                data = nds.decompress(f, length)
+                filedata = nds.decompress(f, length)
             else:
-                data = f.read(length)
+                filedata = f.read(length)
             # Read magic
             try:
-                magic = data[:4].decode()
+                magic = filedata[:4].decode()
             except UnicodeDecodeError:
                 magic = ""
             # Try to figure out the filename
@@ -51,5 +51,5 @@ def extract():
                     continue
             # Extract the file
             with common.Stream(outfolder + filename, "wb") as fout:
-                fout.write(data)
+                fout.write(filedata)
     common.logMessage("Done!")

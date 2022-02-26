@@ -2,6 +2,7 @@ __pycache__
 
 build
 data*
+LSuccessorsData
 *.log
 *.exe
 notes.md
