@@ -50,4 +50,7 @@ if __name__ == "__main__":
     if not os.path.isdir(data):
         common.logError(data, "folder not found.")
         quit()
+    if not os.path.isfile(romfile):
+        common.logError(romfile, "file not found.")
+        quit()
     common.runCLI(common.cli)
