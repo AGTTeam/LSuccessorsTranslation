@@ -7,10 +7,10 @@ pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
 
 def extract(data):
     binin = data + "extract/arm9.bin"
-    scriptfile = data + "script_output.txt"
-    binfile = data + "bin_output.txt"
+    tfile = data + "out_translations/ja-JP.xliff"
 
-    common.logMessage("Extracting BIN to", binfile, "...")
+    common.logMessage("Extracting BIN to", tfile, "...")
+    t = common.TranslationFile()
     # Read the lines
     strings, positions = common.extractBinaryStrings(binin, game.binrange, game.detectEncodedString)
     pointertostr = {}
@@ -19,40 +19,46 @@ def extract(data):
             pointertostr[pos] = i
     # Try to detect the strings in the correct order
     found = []
-    with codecs.open(binfile, "w", "utf-8") as out:
-        with codecs.open(scriptfile, "w", "utf-8") as script:
-            with common.Stream(binin, "rb") as f:
-                for pointerrange in pointerranges:
-                    f.seek(pointerrange[0])
-                    donestr = []
-                    while f.tell() < pointerrange[1]:
-                        pos = f.tell()
-                        pointer = f.readUInt() - 0x02000000
-                        if pointer not in pointertostr:
-                            pointer += 1
-                        if pointer in pointertostr:
-                            binstr, pre, post = formatString(strings[pointertostr[pointer]])
-                            if binstr.endswith("\\p\\E") or binstr.endswith("\\p\\P"):
-                                binstr = binstr[:-4]
-                            elif binstr.endswith("\\p"):
-                                binstr = binstr[:-2]
-                            found.append(pointer)
-                            if not pointerrange[2]:
-                                donestr.append(binstr)
-                                script.write(binstr + "=\n")
-                            elif binstr not in donestr:
-                                donestr.append(binstr)
-                                if binstr.endswith("|"):
-                                    binstr = binstr[:-1]
-                                out.write(binstr + "=\n")
+    with common.Stream(binin, "rb") as f:
+        for pointerrange in pointerranges:
+            f.seek(pointerrange[0])
+            while f.tell() < pointerrange[1]:
+                pos = f.tell()
+                pointer = f.readUInt() - 0x02000000
+                if pointer not in pointertostr:
+                    pointer += 1
+                if pointer in pointertostr and pointer not in found:
+                    binstr, pre, post = formatString(strings[pointertostr[pointer]])
+                    if binstr.endswith("\\p\\E") or binstr.endswith("\\p\\P"):
+                        binstr = binstr[:-4]
+                    elif binstr.endswith("\\p"):
+                        binstr = binstr[:-2]
+                    found.append(pointer)
+                    if binstr == "" or binstr == "|":
+                        continue
+                    if not pointerrange[2]:
+                        t.addEntry(binstr, "script", pointer)
+                    else:
+                        if binstr.endswith("|"):
+                            binstr = binstr[:-1]
+                        t.addEntry(binstr, "bin", pointer)
         # Extract the rest
         donestr = []
         for pointer in pointertostr:
             binstr, pre, post = formatString(strings[pointertostr[pointer]])
-            if pointer not in found and binstr != "|" and binstr not in donestr:
+            if pointer not in found and binstr != "|":
                 donestr.append(binstr)
-                out.write(binstr + "=\n")
+                t.addEntry(binstr, "bin", pointer)
+    t.save(tfile)
     common.logMessage("Done! Extracted", len(strings), "lines")
+
+
+def merge(data):
+    tfile = data + "out_translations/ja-JP.xliff"
+    t = common.TranslationFile(tfile)
+    t.mergeSection(data + "bin_input.txt")
+    t.mergeSection(data + "script_input.txt")
+    t.save(tfile.replace("ja-JP", "en-US"))
 
 
 def formatString(binstr):
