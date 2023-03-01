@@ -13,9 +13,8 @@ Download xdelta.exe.
 Run `pipenv sync`.  
 Run the tool with `pipenv run tool.py` or build with `pipenv run pyinstaller tool.spec`.  
 ## Text Editing
-Rename the \*\_output.txt files to \*\_input.txt (bin_output.txt to bin_input.txt, etc) and add translations for each line after the `=` sign.  
-To blank out a line, use a single `!`. If just left empty, the line will be left untranslated.  
-Comments can be added at the end of lines by using `#`  
+Copy the `out_translations\ja-JP.xliff` file to `translations\en-US.xliff` and edit it through tools like Weblate or POEdit.  
+To blank out a line, use a single "!". If just left empty, the line will be left untranslated.  
 ## Image Editing
 Rename the out\_\* folders to work\_\* (out_IMG to work_IMG, etc).  
 Edit the images in the work folder(s). The palette on the right should be followed but the repacker will try to approximate other colors to the closest one.  
