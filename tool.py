@@ -3,9 +3,9 @@ import click
 import game
 from hacktools import common, nds, nitro
 
-version = "0.2.0"
+version = "0.3.0"
 data = "LSuccessorsData/"
-romfile = data + "dn2.nds"
+romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
 infolder = data + "extract/"
 replacefolder = data + "replace/"
@@ -33,7 +33,7 @@ def extract(rom, bin, img):
 
 
 @common.cli.command()
-@click.option("--no-rom", is_flag=True, default=False)
+@click.option("--no-rom", is_flag=True, default=False, hidden=True)
 @click.option("--bin", is_flag=True, default=False)
 @click.option("--img", is_flag=True, default=False)
 def repack(no_rom, bin, img):
@@ -45,18 +45,11 @@ def repack(no_rom, bin, img):
         nds.repackRom(romfile, rompatch, outfolder, patchfile)
 
 
-@common.cli.command()
+@common.cli.command(hidden=True)
 def merge():
     import format_bin
     format_bin.merge(data)
 
 
 if __name__ == "__main__":
-    click.echo("LSuccessorsTranslation version " + version)
-    if not os.path.isdir(data):
-        common.logError(data, "folder not found.")
-        quit()
-    if not os.path.isfile(romfile):
-        common.logError(romfile, "file not found.")
-        quit()
-    common.runCLI(common.cli)
+    common.setupTool("LSuccessorsTranslation", version, data, romfile, 0x4a620f90)
