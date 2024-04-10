@@ -1,8 +1,18 @@
 import codecs
 import game
-from hacktools import common
+from hacktools import common, nds
 
+binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
+
+
+def repack(data, jp=False):
+    binin = data + "extract/arm9.bin"
+    binfile = data + "translations/en-US.xliff"
+    binout = data + "repack/arm9.bin"
+
+    nds.repackBIN(binrange, [], game.detectEncodedString, game.writeEncodedString, binin=binin, binout=binout, binfile=binfile)
+    #common.armipsPatch(common.bundledFile("bin_patch.asm"))
 
 
 def extract(data):
@@ -12,7 +22,7 @@ def extract(data):
     common.logMessage("Extracting BIN to", tfile, "...")
     t = common.TranslationFile()
     # Read the lines
-    strings, positions = common.extractBinaryStrings(binin, game.binrange, game.detectEncodedString)
+    strings, positions = common.extractBinaryStrings(binin, binrange, game.detectEncodedString)
     pointertostr = {}
     for i in range(len(positions)):
         for pos in positions[i]:
@@ -66,6 +76,10 @@ def formatString(binstr):
     binstr = binstr.replace("\\p\\P", ">>")
     binstr = binstr.replace("\\p\\E", "<end>")
     binstr = binstr.replace("\\n", "|")
+    binstr = binstr.replace("nn", "<num>")
+    binstr = binstr.replace("gr", "<group>")
+    binstr = binstr.replace("cc", "<name>")
+    binstr = binstr.replace("ar", "<area>")
     if binstr.endswith("<end>"):
         binstr = binstr[:-5]
         post = "<end>" + post

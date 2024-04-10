@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, nds, nitro
 
-version = "0.3.0"
+version = "0.4.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
@@ -37,7 +37,13 @@ def extract(rom, bin, img):
 @click.option("--bin", is_flag=True, default=False)
 @click.option("--img", is_flag=True, default=False)
 def repack(no_rom, bin, img):
-    # all = not bin and not img
+    all = not bin and not img
+    if all or img:
+        import format_archive
+        format_archive.repack(data)
+    if all or bin:
+        import format_bin
+        format_bin.repack(data)
     if not no_rom:
         if os.path.isdir(replacefolder):
             common.mergeFolder(replacefolder, outfolder)

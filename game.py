@@ -2,11 +2,13 @@ import struct
 import os
 from hacktools import common, nitro
 
-binrange = [(445000, 884000)]
-
 
 def detectEncodedString(f, encoding):
     return common.detectEncodedString(f, "cp932", [0x25, 0x5c])
+
+
+def writeEncodedString(f, s, maxlen, encoding):
+    return common.writeEncodedString(f, s, maxlen, "cp932")
 
 
 def readIPAL(file):
@@ -38,14 +40,16 @@ def readICHR(file):
         f.seek(4)
         ichr.width = f.readUShort() * 8
         ichr.height = f.readUShort() * 8
-        f.seek(2, 1)
-        unk1 = f.readByte()
-        ichr.bpp = 4 if unk1 == 0xe else 8
-        f.seek(2, 1)
+        unk1 = f.readByte()  # always 0?
+        f.seek(1, 1)  # always 0
         unk2 = f.readByte()
-        ichr.lineal = (unk2 == 0x4 and unk1 != 0x20) or unk1 == 0x1
-        f.seek(2, 1)
+        ichr.bpp = 4 if unk2 == 0xe else 8
+        f.seek(2, 1)  # always 0
+        unk3 = f.readByte()
+        ichr.lineal = (unk3 == 0x4 and unk2 != 0x12) or unk2 == 0x1
+        f.seek(2, 1)  # always 0
         tiledata = f.read()
+        # common.logDebug(file, common.toHex(unk1), common.toHex(unk2), common.toHex(unk3))
     tilelen = len(tiledata)
     for i in range(tilelen // (8 * ichr.bpp)):
         singletile = []
@@ -97,13 +101,17 @@ def readNitroGraphicICHR(palettefile, tilefile, mapfile):
 def readImage(infolder, file, extension):
     cell = None
     width = height = 0
+    i = int(file[4:-5].split("_")[0])
+    #if i < 632:
+    #    return None, None, None, None, None, None, None, None
     if extension == ".ICHR":
         palettefile = file.replace(extension, ".IPAL")
-        i = int(file[4:-5])
         if i == 41:
             palettefile = "file00040.IPAL"
         elif i >= 53 and i <= 61:
             palettefile = "file00052.IPAL"
+        elif i == 633 or i == 671 or i == 686:
+            palettefile = "file" + str(i + 1).zfill(5) + ".IPAL"
         elif not os.path.isfile(infolder + palettefile) and "_" in file:
             palettefile = file.split("_")[0] + ".IPAL"
         mapfile = ""
@@ -132,6 +140,10 @@ def readImage(infolder, file, extension):
         if image is not None:
             width = image.width
             height = image.height
+            if (i >= 260 and i <= 293):
+                image.lineal = False
+            if i == 632 or i == 652 or i == 653 or (i >= 655 and i <= 670) or (i >= 675 and i <= 676) or (i >= 678 and i <= 685) or i >= 688:
+                width //= 2
     elif extension == ".NCGR":
         palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile
