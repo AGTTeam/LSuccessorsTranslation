@@ -4,15 +4,31 @@ from hacktools import common, nds
 
 binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
+freeranges = [(0xd8160+0x300, 0xd8160+0x7d00, 0x01ff02ec-0xd8160), (0xd8160+0x7d00, 0xd8160+0x7d00*2, 0x01ff8300-0xd8160+0x7d00)]
 
 
 def repack(data, jp=False):
     binin = data + "extract/arm9.bin"
     binfile = data + "translations/en-US.xliff"
     binout = data + "repack/arm9.bin"
+    headerin = data + "extract/header.bin"
+    headerout = data + "repack/header.bin"
 
-    nds.repackBIN(binrange, [], game.detectEncodedString, game.writeEncodedString, binin=binin, binout=binout, binfile=binfile)
-    #common.armipsPatch(common.bundledFile("bin_patch.asm"))
+    # Create the font data file
+    with codecs.open(data + "fontconfig.txt", "r", "utf-8") as f:
+        section = common.getSection(f, "", inorder=True)
+        with common.Stream(data + "fontdata.bin", "wb") as f:
+            for c in section:
+                f.write(c["name"].replace("～", "〜").encode("shift_jis"))
+                f.writeUShort(int(c["value"]))
+            f.writeUShort(0)
+            f.writeUShort(0xc)
+    # Expand and repack the binary file
+    injectaddresses = [0x01ff02ec, 0x01ff8300]
+    injectlengths = [0x7d00, 0x7d00]
+    nds.expandBIN(binin, binout, headerin, headerout, injectlengths, injectaddresses)
+    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0, nocopy=True)
+    common.armipsPatch(common.bundledFile("bin_patch.asm"))
 
 
 def extract(data):
@@ -38,11 +54,7 @@ def extract(data):
                 if pointer not in pointertostr:
                     pointer += 1
                 if pointer in pointertostr and pointer not in found:
-                    binstr, pre, post = formatString(strings[pointertostr[pointer]])
-                    if binstr.endswith("\\p\\E") or binstr.endswith("\\p\\P"):
-                        binstr = binstr[:-4]
-                    elif binstr.endswith("\\p"):
-                        binstr = binstr[:-2]
+                    binstr, pre, post = preFormatString(strings[pointertostr[pointer]])
                     found.append(pointer)
                     if binstr == "" or binstr == "|":
                         continue
@@ -55,7 +67,7 @@ def extract(data):
         # Extract the rest
         donestr = []
         for pointer in pointertostr:
-            binstr, pre, post = formatString(strings[pointertostr[pointer]])
+            binstr, pre, post = preFormatString(strings[pointertostr[pointer]])
             if pointer not in found and binstr != "|":
                 donestr.append(binstr)
                 t.addEntry(binstr, "bin", pointer)
@@ -71,7 +83,7 @@ def merge(data):
     t.save(tfile.replace("ja-JP", "en-US"))
 
 
-def formatString(binstr):
+def preFormatString(binstr):
     post = pre = ""
     binstr = binstr.replace("\\p\\P", ">>")
     binstr = binstr.replace("\\p\\E", "<end>")
@@ -98,4 +110,22 @@ def formatString(binstr):
     if binstr.startswith("\\t"):
         pre = pre + binstr[:6]
         binstr = binstr[6:]
+    if binstr.endswith("\\p"):
+        binstr = binstr[:-2]
+        post = "\\p" + post
+    if len(binstr) > 0 and ord(binstr[:1]) >= 0x30 and ord(binstr[:1]) <= 0x39:
+        pre = pre + binstr[:1]
+        binstr = binstr[1:]
     return binstr, pre, post
+
+
+def postFormatString(binstr, pre, post):
+    binstr = pre + binstr + post
+    binstr = binstr.replace(">>", "\\p\\P")
+    binstr = binstr.replace("<end>", "\\p\\E")
+    binstr = binstr.replace("|", "\\n")
+    binstr = binstr.replace("<num>", "nn")
+    binstr = binstr.replace("<group>", "gr")
+    binstr = binstr.replace("<name>", "cc")
+    binstr = binstr.replace("<area>", "ar")
+    return binstr

@@ -4,10 +4,11 @@ from hacktools import common, nitro
 
 
 def detectEncodedString(f, encoding):
-    return common.detectEncodedString(f, "cp932", [0x25, 0x5c])
+    return common.detectEncodedString(f, "cp932", [0x25, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x5c])
 
 
 def writeEncodedString(f, s, maxlen, encoding):
+    s = s.replace("—", "ー")
     return common.writeEncodedString(f, s, maxlen, "cp932")
 
 
