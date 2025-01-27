@@ -17,9 +17,10 @@ patchfile = data + "patch.xdelta"
 @common.cli.command()
 @click.option("--rom", is_flag=True, default=False)
 @click.option("--bin", is_flag=True, default=False)
+@click.option("--font", is_flag=True, default=False)
 @click.option("--img", is_flag=True, default=False)
-def extract(rom, bin, img):
-    all = not rom and not bin and not img
+def extract(rom, bin, font, img):
+    all = not rom and not bin and not font and not img
     if all or rom:
         nds.extractRom(romfile, infolder, outfolder)
         import format_archive
@@ -27,6 +28,9 @@ def extract(rom, bin, img):
     if all or bin:
         import format_bin
         format_bin.extract(data)
+    if all or font:
+        import format_font
+        format_font.extract(data)
     if all or img:
         # nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", [".NCGR", ".ICHR"], game.readImage)
         nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", ".ICHR", game.readImage)
@@ -35,13 +39,17 @@ def extract(rom, bin, img):
 @common.cli.command()
 @click.option("--no-rom", is_flag=True, default=False, hidden=True)
 @click.option("--bin", is_flag=True, default=False)
+@click.option("--font", is_flag=True, default=False)
 @click.option("--img", is_flag=True, default=False)
-def repack(no_rom, bin, img):
-    all = not bin and not img
-    if all or img:
+def repack(no_rom, bin, font, img):
+    all = not bin and not img and not font
+    if all or font:
+        import format_font
+        format_font.repack(data)
+    if all or img or font:
         import format_archive
         format_archive.repack(data)
-    if all or bin:
+    if all or bin or font:
         import format_bin
         format_bin.repack(data)
     if not no_rom:
