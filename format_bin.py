@@ -4,7 +4,7 @@ from hacktools import common, nds
 
 binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
-freeranges = [(0xd8160+0x300, 0xd8160+0x7d00, 0x01ff02ec-0xd8160), (0xd8160+0x7d00, 0xd8160+0x7d00*2, 0x01ff8300-0xd8160+0x7d00)]
+freeranges = [(0xd8160+0x300, 0xd8160+0x8c500, True)]
 
 
 def repack(data, jp=False):
@@ -24,10 +24,8 @@ def repack(data, jp=False):
             f.writeUShort(0)
             f.writeUShort(0xc)
     # Expand and repack the binary file
-    injectaddresses = [0x01ff02ec, 0x01ff8300]
-    injectlengths = [0x7d00, 0x7d00]
-    nds.expandBIN(binin, binout, headerin, headerout, injectlengths, injectaddresses)
-    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0, nocopy=True)
+    nds.expandBIN(binin, binout, headerin, headerout, 0x8c500, 0x021e2600)
+    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0x021e2600-0xd8160, nocopy=True)
     common.armipsPatch(common.bundledFile("bin_patch.asm"))
 
 

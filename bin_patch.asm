@@ -2,7 +2,7 @@
 
 draw_char equ 0x020065d0
 
-.open "LSuccessorsData/repack/arm9.bin",0x01ff02ec - 0xd8160
+.open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
   .orga 0xd8160
   .area 0x300
 
@@ -17,6 +17,8 @@ draw_char equ 0x020065d0
   ;If the character is ASCII and different from \, convert it to SJIS
   cmp r3,0x7f
   bgt @@sjis
+  cmp r3,0x20
+  blt @@sjis
   cmp r3,0x5c
   beq @@sjis
   ldr r0,=SJIS_LOOKUP
@@ -25,22 +27,42 @@ draw_char equ 0x020065d0
   add r0,r0,r3
   ldrb r3,[r0]
   ldrb r4,[r0,0x1]
+  ;Load the char length in r7
+  ldrb r7,[r0,0x2]
   mov r0,r3,lsl 8
   orr r0,r0,r4
+  ;Increase the script counter by 1
+  add r1,r1,0x1
+  ldr r3,[r9,0x20]
+  add r3,r3,0x1
+  str r3,[r9,0x20]
   pop {r3-r4}
   b DRAW_SCRIPT_CHARACTER
   @@sjis:
-  ;Load the sjis character in r2
+  ;Load the sjis character in r2, but backwards
   add r0,r0,0x1
   ldrb r2,[r2,r0]
-  lsl r3,r3,0x8
+  lsl r2,r2,0x8
   orr r2,r2,r3
-  ;Increase the script counter by an additional 1 to account for the extra character
+  ;Set char length to 0xc
+  mov r7,0xc
+  ;Increase the script counter by 2
+  add r1,r1,0x2
   ldr r3,[r9,0x20]
-  add r3,r3,0x1
-  str r2,[r9,0x20]
+  add r3,r3,0x2
+  str r3,[r9,0x20]
   pop {r3-r4}
   b LOAD_ASCII_RET
+
+  READ_CHARCODE:
+  push {r2}
+  ldrb r2,[r1,r0]
+  add r0,r0,0x1
+  ldrb r0,[r1,r0]
+  lsl r0,r0,0x8
+  orr r0,r0,r2
+  pop {r2}
+  bx lr
 
   VWF_BIN_POS:
   .dw 0
@@ -121,13 +143,64 @@ draw_char equ 0x020065d0
   ;Load 2 bytes at a time, possibly unaligned, instead of using ldrh
   .org 0x0204c9c8
   ;mov r0,r1,lsl 0x1
-  ;mov r0,r1
+  mov r0,r1
   ;ldrh r2,[r2,r0]
-  ;b LOAD_ASCII
+  b LOAD_ASCII
   LOAD_ASCII_RET:
 
   .org 0x0204cd80
   DRAW_SCRIPT_CHARACTER:
+
+  ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
+  ;As well as increasing the script counter by 2
+  .org 0x0204ccc0
+  add r0,r0,0x2
+  .org 0x0204cccc
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cce8
+  add r0,r0,0x2
+  .org 0x0204ccf4
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cc90
+  add r0,r0,0x2
+  .org 0x0204cc9c
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cb38
+  add r0,r0,0x2
+  .org 0x0204cb44
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cbe0
+  add r0,r0,0x2
+  .org 0x0204cbec
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cd18
+  add r0,r1,0x2 ;this is different from the other ones
+  .org 0x0204cd24
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+
+  .org 0x0204cd40
+  add r0,r0,0x2
+  .org 0x0204cd4c
+  sub r0,r0,0x2
+  bl READ_CHARCODE
+  .org 0x0204cd74
+  add r0,r0,0x2
+
+  ;Don't increase the counter here since we're already doing it in LOAD_ASCII
+  .org 0x0204cdec
+  ;add r0,r0,0x1
+  nop
 
   .org 0x020067c8
   ;mov r9,r3
