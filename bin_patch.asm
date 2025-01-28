@@ -29,6 +29,7 @@ draw_char equ 0x020065d0
   ldrb r4,[r0,0x1]
   ;Load the char length in r7
   ldrb r7,[r0,0x2]
+  add r7,r7,0x2
   mov r0,r3,lsl 8
   orr r0,r0,r4
   ;Increase the script counter by 1
@@ -123,6 +124,7 @@ draw_char equ 0x020065d0
   orr r2,r2,r6
   ;Load the correct VWF value and add it to the VWF counter
   ldrb r6,[r5,0x2]
+  add r6,r6,0x2
   add r4,r0,r6
   str r4,[r3]
   pop {r3-r5}
