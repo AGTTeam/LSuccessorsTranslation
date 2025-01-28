@@ -59,11 +59,5 @@ def repack(no_rom, bin, font, img):
         nds.repackRom(romfile, rompatch, outfolder, patchfile)
 
 
-@common.cli.command(hidden=True)
-def merge():
-    import format_bin
-    format_bin.merge(data)
-
-
 if __name__ == "__main__":
     common.setupTool("LSuccessorsTranslation", version, data, romfile, 0x4a620f90)

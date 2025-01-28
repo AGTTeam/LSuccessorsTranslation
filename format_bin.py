@@ -5,24 +5,34 @@ from hacktools import common, nds
 binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
 freeranges = [(0xd8160+0x300, 0xd8160+0x8c500, True)]
+wordwrap = 190
 
 
-def repack(data, jp=False):
+def repack(data):
     binin = data + "extract/arm9.bin"
     binfile = data + "translations/en-US.xliff"
     binout = data + "repack/arm9.bin"
     headerin = data + "extract/header.bin"
     headerout = data + "repack/header.bin"
 
-    # Create the font data file
+    # Create the font data file and prepare the glyph sizes for wordwrapping
+    global glyphs
+    glyphs = {}
     with codecs.open(data + "fontconfig.txt", "r", "utf-8") as f:
         section = common.getSection(f, "", inorder=True)
         with common.Stream(data + "fontdata.bin", "wb") as f:
+            ascii = 0x20
             for c in section:
-                f.write(c["name"].replace("～", "〜").encode("shift_jis"))
-                f.writeUShort(int(c["value"]))
+                charid = c["name"].replace("～", "〜").encode("cp932")
+                charlen = int(c["value"])
+                f.write(charid)
+                f.writeUShort(charlen)
+                glyphs[chr(ascii)] = common.FontGlyph(0, charlen, charlen + 2)
+                glyphs[charid] = common.FontGlyph(0, charlen, charlen + 2)
+                ascii += 1
             f.writeUShort(0)
             f.writeUShort(0xc)
+
     # Expand and repack the binary file
     nds.expandBIN(binin, binout, headerin, headerout, 0x8c500, 0x021e2600)
     nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0x021e2600-0xd8160, nocopy=True)
@@ -73,14 +83,6 @@ def extract(data):
     common.logMessage("Done! Extracted", len(strings), "lines")
 
 
-def merge(data):
-    tfile = data + "out_translations/ja-JP.xliff"
-    t = common.TranslationFile(tfile)
-    t.mergeSection(data + "bin_input.txt")
-    t.mergeSection(data + "script_input.txt")
-    t.save(tfile.replace("ja-JP", "en-US"))
-
-
 def preFormatString(binstr):
     post = pre = ""
     binstr = binstr.replace("\\p\\P", ">>")
@@ -117,7 +119,16 @@ def preFormatString(binstr):
     return binstr, pre, post
 
 
+def detectTextCode(s, i=0):
+    if s[i] == "<":
+        return len(s[i:].split(">", 1)[0]) + 1
+    return 0
+
+
 def postFormatString(binstr, pre, post):
+    global glyphs
+    if (binstr + post).endswith(">>") or (binstr + post).endswith("<end>"):
+        binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
     binstr = pre + binstr + post
     binstr = binstr.replace(">>", "\\p\\P")
     binstr = binstr.replace("<end>", "\\p\\E")
@@ -126,4 +137,5 @@ def postFormatString(binstr, pre, post):
     binstr = binstr.replace("<group>", "gr")
     binstr = binstr.replace("<name>", "cc")
     binstr = binstr.replace("<area>", "ar")
+    common.logDebug(binstr)
     return binstr
