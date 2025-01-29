@@ -196,8 +196,11 @@ draw_char equ 0x020065d0
   .org 0x0204cd4c
   sub r0,r0,0x2
   bl READ_CHARCODE
+
+  ;Don't increase here
   .org 0x0204cd74
-  add r0,r0,0x2
+  ;add r0,r0,0x1
+  nop
 
   ;Don't increase the counter here since we're already doing it in LOAD_ASCII
   .org 0x0204cdec
