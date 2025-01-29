@@ -204,6 +204,17 @@ draw_char equ 0x020065d0
   ;add r0,r0,0x1
   nop
 
+  ;This is the check for the line end, don't increase the counter here
+  .org 0x0204d248
+  ;add r0,r0,0x2
+  nop
+  ;But increase it here to check the next one, only reading 1 byte since it's just checking for 0
+  .org 0x0204d268
+  ;mov r0,r0,lsl 0x1
+  add r0,r0,0x2
+  ;ldrh r1,[r1,r0]
+  ldrb r1,[r1,r0]
+
   .org 0x020067c8
   ;mov r9,r3
   bl VWF_BIN_RESET
