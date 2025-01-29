@@ -122,6 +122,8 @@ def preFormatString(binstr):
 def detectTextCode(s, i=0):
     if s[i] == "<":
         return len(s[i:].split(">", 1)[0]) + 1
+    if s[i] == "\\" and (s[i+1] == "T" or s[i+1] == "t"):
+        return 6
     return 0
 
 
@@ -133,9 +135,11 @@ def postFormatString(binstr, pre, post):
     binstr = binstr.replace(">>", "\\p\\P")
     binstr = binstr.replace("<end>", "\\p\\E")
     binstr = binstr.replace("|", "\\n")
-    binstr = binstr.replace("<num>", "nn")
-    binstr = binstr.replace("<group>", "gr")
-    binstr = binstr.replace("<name>", "cc")
-    binstr = binstr.replace("<area>", "ar")
+    # These need to be replated with other characters since cc/ar/nn/gr might be used in the scripts
+    # See bin_patch.asm (;Change code characters cc/ar/nn/gr)
+    binstr = binstr.replace("<num>", "\\u")
+    binstr = binstr.replace("<group>", "\\o")
+    binstr = binstr.replace("<name>", "\\a")
+    binstr = binstr.replace("<area>", "\\e")
     common.logDebug(binstr)
     return binstr
