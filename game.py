@@ -9,7 +9,7 @@ def detectEncodedString(f, encoding):
 
 def writeEncodedString(f, s, maxlen, encoding):
     s = s.replace("—", "ー")
-    # This characters are replaced with ascii to make more room for translations
+    # These characters are replaced with ascii to make more room for translations
     s = s.replace("‘", "[")
     s = s.replace("’", "]")
     s = s.replace("“", "{")
