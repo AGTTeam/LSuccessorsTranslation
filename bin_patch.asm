@@ -4,7 +4,7 @@ draw_char equ 0x020065d0
 
 .open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
   .orga 0xd8160
-  .area 0x300
+  .area 0x500
 
   ;ASCII to SJIS lookup table, also includes VWF values
   SJIS_LOOKUP:
@@ -66,51 +66,79 @@ draw_char equ 0x020065d0
   bx lr
 
   VWF_BIN_POS:
-  .dw 0
-  .dw 0
+  .dw 0 ;xpos
+  .dw 0 ;ypos
+  .dw 0 ;type
+  ;repeat again for print_game_top_str since this prints at the same time
+  ;and one character at a time
+  .dw 0 :: .dw 0 :: .dw 0
 
-  .macro reset_vwf
+  .macro bin_reset,type
   push {r0-r1}
   mov r0,0x0
   ldr r1,=VWF_BIN_POS
+  .if type == 0x2
+    add r1,r1,0x4*3
+  .endif
   str r0,[r1]
   str r0,[r1,0x4]
   pop {r0-r1}
+  bx lr
+  .pool
   .endmacro
 
-  .macro vwf_line
+  .macro bin_line,type
   push {r0-r1}
   mov r0,0x0
   ldr r1,=VWF_BIN_POS
+  .if type == 0x2
+    add r1,r1,0x4*3
+  .endif
   str r0,[r1]
   ldr r0,[r1,0x4]
-  add r0,r0,0x1
+  add r0,r0,0x10
   str r0,[r1,0x4]
   pop {r0-r1}
+  bx lr
+  .pool
   .endmacro
 
-  VWF_BIN_RESET:
-  reset_vwf
-  mov r9,r3
-  bx lr
+  .macro vwf_bin_call,type
+  push {r1-r2}
+  ldr r1,=VWF_BIN_POS
+  mov r2,type
+  str r2,[r1,0x8]
+  ;store the type in both
+  .if type == 0x2
+    str r2,[r1,0x8+(0x4*3)]
+  .endif
+  pop {r1-r2}
+  b VWF_BIN_FUNC
   .pool
+  .endmacro
 
-  VWF_BIN_LINEBREAK:
-  vwf_line
-  add r5,r5,0x1
-  bx lr
-  .pool
+  VWF_BIN_RESET_FUNC:
+  bin_reset 0
 
-  VWF_BIN:
+  VWF_BIN_LINE_FUNC:
+  bin_line 0
+
+  VWF_BIN_FUNC:
   ;r0 = x position
   ;r1 = y position
   ;r2 = character
-  ;r6 = original character if ascii
+  ;script index by type: r5 / r6 / r7? / r7 / r6
   ;Load the VWF value
-  push {r3-r5}
+  push {r3-r6}
   ldr r3,=VWF_BIN_POS
+  ldr r0,[r3,0x8]
+  cmp r0,0x2
+  addeq r3,r3,0x4*3
   ldr r0,[r3]
   ldr r1,[r3,0x4]
+  ;Get the original character ((r2 >> 8) & 0xf)
+  mov r6,r2
+  lsr r6,0x8
   cmp r6,0x7f
   bgt @@sjis
   ;If the character is ascii, convert it to sjis
@@ -127,16 +155,128 @@ draw_char equ 0x020065d0
   add r6,r6,0x2
   add r4,r0,r6
   str r4,[r3]
-  pop {r3-r5}
+  ;TODO: type 2?
+  ;ldr r4,[r3,0x8]
+  ;cmp r4,0x2
+  ;subeq r7,r7,0x1
+  pop {r3-r6}
   b draw_char
   @@sjis:
   ;Add 0xc to the VWF counter and move on
   add r4,r0,0xc
   str r4,[r3]
-  pop {r3-r5}
-  add r5,r5,0x1
+  pop {r3-r6}
+  ;Use r0 to increase the script counter depending on the type
+  ;We only need to do this for sjis characters
+  push {r0}
+  ldr r0,=VWF_BIN_POS
+  ldr r0,[r0,0x8]
+  cmp r0,0x0
+  addeq r5,r5,0x1
+  beq @@ret
+  cmp r0,0x1
+  addeq r6,r6,0x1
+  beq @@ret
+  ;TODO: type 2?
+  ;cmpne r0,0x2
+  ;addeq r7,r7,0x1
+  ;beq @@ret
+  cmp r0,0x3
+  addeq r7,r7,0x1
+  beq @@ret
+  cmp r0,0x4
+  addeq r6,r6,0x1
+  @@ret:
+  pop {r0}
   b draw_char
   .pool
+
+
+  ;0x020067b8/parse_string calls
+  VWF_BIN_RESET:
+  mov r9,r3
+  b VWF_BIN_RESET_FUNC
+
+  VWF_BIN_LINEBREAK:
+  add r5,r5,0x1
+  b VWF_BIN_LINE_FUNC
+
+  VWF_BIN:
+  vwf_bin_call 0x0
+
+
+  ;0x020073bc/print_game_str calls
+  VWF_BIN_RESET2:
+  mov r10,r0
+  b VWF_BIN_RESET_FUNC
+
+  VWF_BIN_LINEBREAK2:
+  add r6,r6,0x1
+  b VWF_BIN_LINE_FUNC
+
+  VWF_BIN2:
+  vwf_bin_call 0x1
+
+
+  ;0x02006ff0/print_game_top_str calls
+  ;This one uses a separate struct
+  VWF_BIN_RESET3:
+  bin_reset 0x2
+
+  VWF_BIN_LINEBREAK3:
+  add r7,r7,0x1
+  bin_line 0x2
+
+  VWF_BIN3:
+  vwf_bin_call 0x2
+
+  ;This is an additional check we do here since the
+  ;next character might be 0
+  VFW_CHECK_BIN3:
+  push {r0-r1,lr}
+  ;call read_byte
+  mov r0,r4
+  mov r1,r7
+  bl 0x02006f98
+  ;If it's 0xa we also need to check the next one
+  cmp r0,0xa
+  bne @@check_zero
+  mov r0,r4
+  add r1,r7,0x1
+  bl 0x02006f98
+  @@check_zero:
+  cmp r0,0x0
+  bleq VWF_BIN_RESET3
+  pop {r0-r1,lr}
+  cmp r8,0x1
+  bx lr
+  .pool
+
+
+  ;0x02014e38/print_pre_game_str calls
+  VWF_BIN_RESET4:
+  mov r10,r0
+  b VWF_BIN_RESET_FUNC
+
+  VWF_BIN_LINEBREAK4:
+  add r7,r7,0x1
+  b VWF_BIN_LINE_FUNC
+
+  VWF_BIN4:
+  vwf_bin_call 0x3
+
+
+  ;0x02035050/unk_print_str calls
+  VWF_BIN_RESET5:
+  mov r10,r0
+  b VWF_BIN_RESET_FUNC
+
+  VWF_BIN_LINEBREAK5:
+  add r6,r6,0x1
+  b VWF_BIN_LINE_FUNC
+
+  VWF_BIN5:
+  vwf_bin_call 0x4
 
   .endarea
 .close
@@ -152,6 +292,21 @@ draw_char equ 0x020065d0
 
   .org 0x0204cd80
   DRAW_SCRIPT_CHARACTER:
+
+  ;Increase char limit for count_lines
+  .org 0x0201445c
+  ;cmp r2,0x72
+  cmp r2,0xff
+
+  ;Increase char limit for parse_string
+  .org 0x0200682c
+  ;mul r0,r4,r0
+  mov r0,0xff
+
+  ;Increase char limit for print_pre_game_str
+  .org 0x02014f84
+  ;cmp r6,0x3c
+  cmp r6,0xff
 
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2
@@ -218,6 +373,8 @@ draw_char equ 0x020065d0
   ;ldrh r1,[r1,r0]
   ldrb r1,[r1,r0]
 
+
+  ;BIN print function at 0x020067b8 (parse_string)
   .org 0x020067c8
   ;mov r9,r3
   bl VWF_BIN_RESET
@@ -232,8 +389,95 @@ draw_char equ 0x020065d0
   ;add r5,r5,0x2
   add r5,r5,0x1
 
-  ;Change code characters cc/ar/nn/gr
+  ;Break only on r6 being 0, don't check r0
+  .org 0x0200685c
+  ;cmpne r0,0x0
+  nop
 
+  ;BIN print function at 0x020073bc (print_game_str)
+  .org 0x020073c8
+  ;mov r10,r0
+  bl VWF_BIN_RESET2
+
+  .org 0x02007458
+  ;add r6,r6,0x1
+  bl VWF_BIN_LINEBREAK2
+
+  .org 0x020074f0
+  ;bl draw_char
+  bl VWF_BIN2
+  ;add r6,r6,0x2
+  add r6,r6,0x1
+
+  ;Break only on r7 being 0, don't check r8
+  .org 0x02007434
+  ;cmpne r8,0x0
+  nop
+
+
+  ;BIN print function at 0x02006ff0 (print_game_top_str)
+  .org 0x0200710c
+  ;add r7,r7,0x1
+  ;bl VWF_BIN_LINEBREAK3
+
+  .org 0x020072c4
+  ;bl draw_char
+  ;bl VWF_BIN3
+  ;cmp r8,0x1
+  ;bl VFW_CHECK_BIN3
+  .org 0x02007138
+  ;add r7,r7,0x2
+  ;add r7,r7,0x1
+
+  ;Break only on r9 being 0, don't check r10, jump to reset instead
+  .org 0x020070e0
+  ;cmpne r10,0x0
+  ;bleq VWF_BIN_RESET3
+
+
+  ;BIN print function at 0x02014e38 (print_pre_game_str)
+  .org 0x02014e44
+  ;mov r10,r0
+  bl VWF_BIN_RESET4
+
+  .org 0x02014e90
+  ;add r7,r7,0x1
+  bl VWF_BIN_LINEBREAK4
+
+  .org 0x02014ef8
+  ;bl draw_char
+  bl VWF_BIN4
+  ;add r7,r7,0x2
+  add r7,r7,0x1
+
+  ;Break only on r1 being 0, don't check r0
+  .org 0x02014e64
+  ;cmpne r0,0x0
+  nop
+
+
+  ;BIN print function at 0x02035050 (unk_print_str)
+  .org 0x0203505c
+  ;mov r10,r0
+  bl VWF_BIN_RESET5
+
+  .org 0x020350a0
+  ;add r6,r6,0x1
+  bl VWF_BIN_LINEBREAK5
+
+  .org 0x02035100
+  ;bl draw_char
+  bl VWF_BIN5
+  ;add r6,r6,0x2
+  add r6,r6,0x1
+
+  ;Braek only on r1 being 0, don't check r0
+  .org 0x02035078
+  ;cmpne r0,0x0
+  nop
+
+
+  ;Change code characters cc/ar/nn/gr
   ;cc (0x63 0x63) -> \a (0x5c 0x61)
   .org 0x020148ac
   ;cmp r3,0x63
