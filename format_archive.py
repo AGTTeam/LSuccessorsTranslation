@@ -83,12 +83,17 @@ def extract(data):
                 extension = knownformats[magic]
             if i == 4:
                 filei += 1
-            if extension == "NCLR" or (extension == "IPAL" and i >= 196) or (extension == "ICHR" and i < 196) or extension == "bin":
-                if i != 5:
+            if i != 5:
+                if extension == "NCLR" or extension == "bin":
+                    filei += 1
+                # This is pretty messy and mostly guess-work
+                if extension == "IPAL" and ((i >= 196 and i < 2399) or (i > 2427 and i < 14865)):
+                    filei += 1
+                if extension == "ICHR" and ((i < 196) or (i >= 2399 and i < 2427) or (i >= 14865)):
                     filei += 1
             orig = filename = "file" + str(filei).zfill(5) + "." + extension
             if os.path.isfile(outfolder + filename):
-                if extension == "NCGR" or extension == "ICHR" or extension == "ISCR":
+                if extension == "NCGR" or extension == "ICHR" or extension == "ISCR" or extension == "NANR" or extension == "NCER":
                     j = 0
                     while os.path.isfile(outfolder + filename):
                         j += 1

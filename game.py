@@ -26,9 +26,13 @@ def readIPAL(file):
     palettes = []
     size = os.path.getsize(file) - 16
     with common.Stream(file, "rb") as f:
-        # f.seek(4)
-        # pallen = f.readUShort()
-        pallen = 0x200
+        f.seek(4)
+        depth = f.readUInt()
+        num1 = f.readUShort()
+        num2 = f.readUShort()
+        pallen = num1 * num2
+        if pallen == 0:
+            pallen = 0x200
         f.seek(16)
         if size < pallen:
             pallen = size
@@ -40,26 +44,28 @@ def readIPAL(file):
             palettes.append(palette)
         indexedpalettes = {i: palettes[i] for i in range(0, len(palettes))}
     common.logDebug("Loaded", len(indexedpalettes), "palettes")
-    return indexedpalettes
+    return indexedpalettes, depth
 
 
-def readICHR(file):
+def readICHR(file, depth):
+    common.logDebug("Reading ICHR", file)
     ichr = nitro.NCGR()
     ichr.tiles = []
     with common.Stream(file, "rb") as f:
         f.seek(4)
         ichr.width = f.readUShort() * 8
         ichr.height = f.readUShort() * 8
-        unk1 = f.readByte()  # always 0?
+        unk1 = f.readByte()  # mostly 0
         f.seek(1, 1)  # always 0
         unk2 = f.readByte()
-        ichr.bpp = 4 if unk2 == 0xe else 8
         f.seek(2, 1)  # always 0
         unk3 = f.readByte()
-        ichr.lineal = (unk3 == 0x4 and unk2 != 0x12) or unk2 == 0x1
         f.seek(2, 1)  # always 0
         tiledata = f.read()
-        # common.logDebug(file, common.toHex(unk1), common.toHex(unk2), common.toHex(unk3))
+        ichr.bpp = 4 if depth == 0x10 else 8
+        ichr.lineal = (unk3 == 0x4 and unk2 != 0x12) or unk3 == 0x1 or unk2 == 0x1
+        common.logDebug(vars(ichr))
+        common.logDebug(file, "bpp", ichr.bpp, "lineal", ichr.lineal, "unk1", common.toHex(unk1), "unk2", common.toHex(unk2), "unk3", common.toHex(unk3))
     tilelen = len(tiledata)
     for i in range(tilelen // (8 * ichr.bpp)):
         singletile = []
@@ -76,12 +82,14 @@ def readICHR(file):
 
 
 def readISCR(file):
+    common.logDebug("Reading NSCR", file)
     iscr = nitro.NSCR()
     iscr.maps = []
     with common.Stream(file, "rb") as f:
         f.seek(4)
         iscr.width = f.readUShort() * 8
         iscr.height = f.readUShort() * 8
+        common.logDebug(vars(iscr))
         f.seek(16)
         mapdata = f.read()
     for i in range(0, len(mapdata), 2):
@@ -96,9 +104,9 @@ def readNitroGraphicICHR(palettefile, tilefile, mapfile):
     if not os.path.isfile(palettefile):
         common.logError("Palette", palettefile, "not found")
         return [], None, None
-    palettes = readIPAL(palettefile)
+    palettes, depth = readIPAL(palettefile)
     # Read tiles
-    ichr = readICHR(tilefile)
+    ichr = readICHR(tilefile, depth)
     # Read maps
     iscr = None
     if os.path.isfile(mapfile):
@@ -112,7 +120,7 @@ def readImage(infolder, file, extension):
     cell = None
     width = height = 0
     i = int(file[4:-5].split("_")[0])
-    #if i < 632:
+    #if i < 628 or i > 715:
     #    return None, None, None, None, None, None, None, None
     if extension == ".ICHR":
         palettefile = file.replace(extension, ".IPAL")
@@ -120,24 +128,40 @@ def readImage(infolder, file, extension):
             palettefile = "file00040.IPAL"
         elif i >= 53 and i <= 61:
             palettefile = "file00052.IPAL"
-        elif i == 633 or i == 671 or i == 686:
-            palettefile = "file" + str(i + 1).zfill(5) + ".IPAL"
+        elif i == 555:
+            palettefile = "file00554.IPAL"
+        elif i >= 635 and i <= 638:
+            palettefile = "file00634.IPAL"
+        elif i == 663 or i == 664:
+            palettefile = "file00662.IPAL"
+        elif i == 666 or i == 667:
+            palettefile = "file00665.IPAL"
+        elif i == 680 or i == 681:
+            palettefile = "file00679.IPAL"
+        elif i >= 684 and i <= 686:
+            palettefile = "file00683.IPAL"
+        elif i == 700 or i == 701:
+            palettefile = "file00699.IPAL"
         elif not os.path.isfile(infolder + palettefile) and "_" in file:
             palettefile = file.split("_")[0] + ".IPAL"
         mapfile = ""
         if file == "file00025.ICHR":
             mapfile = "file00025.ISCR"
-        if file == "file00027.ICHR":
+        elif file == "file00027.ICHR":
             mapfile = "file00028_0001.ISCR"
+        elif file == "file00555.ICHR":
+            palettefile = "file00554.ISCR"
         cellfile = ""
     elif extension == ".NCGR":
         palettefile = file.replace(extension, ".NCLR")
         if palettefile == "file00000.NCLR":
             palettefile = "file00001.NCLR"
-        elif palettefile == "file00026.NCLR":
-            palettefile = "file00027.NCLR"
+        elif palettefile == "file00025.NCLR":
+            palettefile = "file00026.NCLR"
         elif palettefile == "file00052.NCLR":
             palettefile = "file00053.NCLR"
+        elif palettefile == "file00061.NCLR":
+            palettefile = "file00062.NCLR"
         elif not os.path.isfile(infolder + palettefile) and "_" in file:
             palettefile = file.split("_")[0] + ".NCLR"
         mapfile = file.replace(extension, ".NSCR")
@@ -152,8 +176,8 @@ def readImage(infolder, file, extension):
             height = image.height
             if (i >= 260 and i <= 293):
                 image.lineal = False
-            if i == 632 or i == 652 or i == 653 or (i >= 655 and i <= 670) or (i >= 675 and i <= 676) or (i >= 678 and i <= 685) or i >= 688:
-                width //= 2
+            if i == 668:
+                image.lineal = True
     elif extension == ".NCGR":
         palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile

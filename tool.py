@@ -32,8 +32,7 @@ def extract(rom, bin, font, img):
         import format_font
         format_font.extract(data)
     if all or img:
-        # nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", [".NCGR", ".ICHR"], game.readImage)
-        nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", ".ICHR", game.readImage)
+        nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", [".NCGR", ".ICHR"], game.readImage)
 
 
 @common.cli.command()
