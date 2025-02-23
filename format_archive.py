@@ -84,12 +84,16 @@ def extract(data):
             if i == 4:
                 filei += 1
             if i != 5:
-                if extension == "NCLR" or extension == "bin":
-                    filei += 1
                 # This is pretty messy and mostly guess-work
-                if extension == "IPAL" and ((i >= 196 and i < 2399) or (i > 2427 and i < 14865)):
+                if extension == "NCLR" or extension == "bin":
+                    if i != 84 and i != 195:
+                        filei += 1
+                if extension == "NANR" and (i == 81 or i == 192):
                     filei += 1
-                if extension == "ICHR" and ((i < 196) or (i >= 2399 and i < 2427) or (i >= 14865)):
+                if extension == "IPAL" and ((i >= 196 and i < 2399) or (i > 2427 and i < 14865)):
+                    if i != 14634:
+                        filei += 1
+                if extension == "ICHR" and ((i < 196) or (i >= 2399 and i < 2427) or (i == 14633) or (i >= 14865)):
                     filei += 1
             orig = filename = "file" + str(filei).zfill(5) + "." + extension
             if os.path.isfile(outfolder + filename):

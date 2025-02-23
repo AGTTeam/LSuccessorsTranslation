@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, nds, nitro
 
-version = "0.5.0"
+version = "0.6.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
@@ -45,6 +45,8 @@ def repack(no_rom, bin, font, img):
     if all or font:
         import format_font
         format_font.repack(data)
+    if all or img:
+        nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", ["NCGR", ".ICHR"], game.readImage, game.writeImage)
     if all or img or font:
         import format_archive
         format_archive.repack(data)

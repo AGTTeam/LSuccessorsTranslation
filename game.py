@@ -1,5 +1,6 @@
 import struct
 import os
+from PIL import Image
 from hacktools import common, nitro
 
 
@@ -61,13 +62,14 @@ def readICHR(file, depth):
         f.seek(2, 1)  # always 0
         unk3 = f.readByte()
         f.seek(2, 1)  # always 0
+        ichr.tileoffset = f.tell()
         tiledata = f.read()
         ichr.bpp = 4 if depth == 0x10 else 8
         ichr.lineal = (unk3 == 0x4 and unk2 != 0x12) or unk3 == 0x1 or unk2 == 0x1
         common.logDebug(vars(ichr))
         common.logDebug(file, "bpp", ichr.bpp, "lineal", ichr.lineal, "unk1", common.toHex(unk1), "unk2", common.toHex(unk2), "unk3", common.toHex(unk3))
-    tilelen = len(tiledata)
-    for i in range(tilelen // (8 * ichr.bpp)):
+    ichr.tilelen = len(tiledata)
+    for i in range(ichr.tilelen // (8 * ichr.bpp)):
         singletile = []
         for j in range(ichr.tilesize * ichr.tilesize):
             x = i * (ichr.tilesize * ichr.tilesize) + j
@@ -179,5 +181,21 @@ def readImage(infolder, file, extension):
             if i == 668:
                 image.lineal = True
     elif extension == ".NCGR":
+        if os.path.isfile("LSuccessorsData/out_IMG/" + file.replace(".NCGR", ".png")):
+            common.logError("Image name conflict", file)
         palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile
+
+
+def writeImage(workfolder, infolder, outfolder, file, image, palettes, map, cell, width, height):
+    extension = os.path.splitext(file)[1]
+    i = int(file[4:-5].split("_")[0])
+    if extension == ".ICHR":
+        pngfile = file.replace(extension, ".png")
+        if map is None:
+            nitro.writeNCGR(outfolder + file, image, workfolder + pngfile, palettes, width, height)
+        else:
+            nitro.writeNSCR(outfolder + file, image, map, workfolder + pngfile, palettes, width, height)
+    elif extension == ".NCGR":
+        return image, palettes, map, cell, width, height, False
+    return None, None, None, None, 0, 0, False
