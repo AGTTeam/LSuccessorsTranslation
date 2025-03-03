@@ -6,7 +6,7 @@ binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
 freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
-wordwrap2 = 230  # used for other lines
+wordwrap2 = 160  # used for other lines
 
 
 def repack(data):
@@ -28,8 +28,8 @@ def repack(data):
                 charlen = int(c["value"])
                 f.write(charid)
                 f.writeUShort(charlen)
-                glyphs[chr(ascii)] = common.FontGlyph(0, charlen, charlen + 2)
-                glyphs[charid] = common.FontGlyph(0, charlen, charlen + 2)
+                glyphs[chr(ascii)] = common.FontGlyph(0, charlen, charlen)
+                glyphs[charid] = common.FontGlyph(0, charlen, charlen)
                 ascii += 1
             f.writeUShort(0)
             f.writeUShort(0xc)
@@ -133,7 +133,7 @@ def postFormatString(binstr, pre, post):
     if (binstr + post).endswith(">>") or (binstr + post).endswith("<end>"):
         binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
         binstr = binstr.replace("|", "\\n")
-    else:
+    elif "|" not in binstr:
         binstr = common.wordwrap(binstr, glyphs, wordwrap2, detectTextCode, default=0xc, strip=False)
     binstr = pre + binstr + post
     binstr = binstr.replace(">>", "\\p\\P")

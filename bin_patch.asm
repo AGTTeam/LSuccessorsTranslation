@@ -317,6 +317,9 @@ draw_char equ 0x020065d0
     mov r8,0x1a
     mla r8,r5,r8,r6
     add r8,r8,0x2
+    ;Load the byte we need to write in r10
+    mov r10,0xe
+    .macro render_text
     ;Load ypos_vram in r12
     add r3,r3,r4,lsr 0x1d
     mov r3,r3,asr 0x3
@@ -346,7 +349,7 @@ draw_char equ 0x020065d0
       cmp r1,0x8
       addge r0,r0,0x400-0x20
       ;Prepare r4 and shift left by r5*4
-      mov r4,0xe
+      mov r4,r10
       lsl r2,r5,0x2
       lsl r4,r4,r2
       ;Load the font data and start looping columns
@@ -357,10 +360,10 @@ draw_char equ 0x020065d0
         add r6,r5,r2
         cmp r6,0x8
         addeq r0,r0,0x20
-        moveq r4,0xe
+        moveq r4,r10
         cmp r6,0x10
         addeq r0,r0,0x20
-        moveq r4,0xe
+        moveq r4,r10
         ;Check if the font bit is filled in
         tst r3,0b10000000
         ldrne r9,[r0]
@@ -378,8 +381,36 @@ draw_char equ 0x020065d0
       add r1,r1,0x1
       cmp r1,0xc
       blt @@row_loop
+    .endmacro
+    render_text
     pop {r3-r11,lr}
     bx lr
+    .pool
+  .endarea
+  
+  ;Replace the script rendering function
+  .org 0x0204c7a0
+  .area 0x16c,0x0
+    ;We don't really need to re-invent the wheel, we can just adjust registers and call the bin macro
+    ;r2 is a ptr to a struct containing most of the info we need
+    mov r10,r2
+    ;r1 = const 0x20
+    mov r1,0x20
+    ;r8 = font_vram
+    mov r8,r3
+    ;r0 = r4 = vram_ptr
+    ldr r0,[r10,0x14]
+    mov r4,r0
+    ;r3 = ypos
+    ldr r3,[r10,0x28]
+    ;r2 = xpos
+    ldr r2,[r10,0x24]
+    ;r10 = character we need to render (handles colors)
+    ldr r10,[r10,0x3c]
+    ;Call the macro and return
+    render_text
+    add sp,sp,0x24
+    pop {r4-r11,pc}
     .pool
   .endarea
 
