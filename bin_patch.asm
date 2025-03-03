@@ -350,12 +350,12 @@ MAX_GLYPH_WIDTH equ 0x10
       add r0,r12,r11
       lsl r2,r1,0x2
       add r0,r0,r2
-      ;If row >= 8-r6, go to the tile below
+      ;If row >= 8-r6, go to the tile below (+0x400)
       mov r7,0x8
       sub r7,r7,r6
       cmp r1,r7
-      ;-4*r7 to start back from the first row
       addge r0,r0,0x400
+      ;-4*r7 to start back from the first row
       subge r0,r0,r7,lsl 0x2
       ;If we're in the first vertical tile, skip r6*4 rows
       addlt r0,r0,r6,lsl 0x2
