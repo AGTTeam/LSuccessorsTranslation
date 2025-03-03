@@ -1,6 +1,9 @@
 .nds
 
 draw_char equ 0x020065d0
+;This can be set to a lower value for English to speed up text rendering
+;by only rendering the left half of a glyph. The original value is 0x10
+MAX_GLYPH_WIDTH equ 0x10
 
 .open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
   .orga 0xd8160
@@ -321,10 +324,10 @@ draw_char equ 0x020065d0
     mov r10,0xe
     .macro render_text
     ;Load ypos_vram in r12
-    add r3,r3,r4,lsr 0x1d
-    mov r3,r3,asr 0x3
-    mov r3,r3,lsl 0x4
-    mul r4,r1,r3
+    add r12,r3,r4,lsr 0x1d
+    mov r12,r12,asr 0x3
+    mov r12,r12,lsl 0x4
+    mul r4,r1,r12
     add r12,r0,r4,lsl 0x1
     ;Load xpos_vram in r11 (=r2/8*32)
     mov r11,r2,lsr 0x3
@@ -335,19 +338,27 @@ draw_char equ 0x020065d0
     ;r2 = col counter
     ;r3 = font data
     ;r4 = current shifted bits
-    ;r5 = amount of bits to skip in the first tile (xpos % 8)
+    ;r5 = amount of cols to skip in the first tile (xpos % 8)
+    ;r6 = amount of rows to skip in the first tile (ypos % 8)
     mov r1,0x0
     mov r5,0b111
     and r5,r2,r5
+    mov r6,0b111
+    and r6,r3,r6
     @@row_loop:
       ;Reset the vram ptr and add row*4
       add r0,r12,r11
       lsl r2,r1,0x2
       add r0,r0,r2
-      ;If row >= 8, go to the tile below
-      ;-0x20 to start back from the first row
-      cmp r1,0x8
-      addge r0,r0,0x400-0x20
+      ;If row >= 8-r6, go to the tile below
+      mov r7,0x8
+      sub r7,r7,r6
+      cmp r1,r7
+      ;-4*r7 to start back from the first row
+      addge r0,r0,0x400
+      subge r0,r0,r7,lsl 0x2
+      ;If we're in the first vertical tile, skip r6*4 rows
+      addlt r0,r0,r6,lsl 0x2
       ;Prepare r4 and shift left by r5*4
       mov r4,r10
       lsl r2,r5,0x2
@@ -357,11 +368,11 @@ draw_char equ 0x020065d0
       mov r2,0x0
         @@col_loop:
         ;Check if we need to move to the next tile
-        add r6,r5,r2
-        cmp r6,0x8
+        add r7,r5,r2
+        cmp r7,0x8
         addeq r0,r0,0x20
         moveq r4,r10
-        cmp r6,0x10
+        cmp r7,0x10
         addeq r0,r0,0x20
         moveq r4,r10
         ;Check if the font bit is filled in
@@ -376,7 +387,7 @@ draw_char equ 0x020065d0
         add r2,r2,0x1
         cmp r2,0x8
         ldreqb r3,[r8],0x1
-        cmp r2,0x10
+        cmp r2,MAX_GLYPH_WIDTH
         blt @@col_loop
       add r1,r1,0x1
       cmp r1,0xc
