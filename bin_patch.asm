@@ -405,7 +405,7 @@ draw_char equ 0x020065d0
     ldr r3,[r10,0x28]
     ;r2 = xpos
     ldr r2,[r10,0x24]
-    ;r10 = character we need to render (handles colors)
+    ;r10 = bytes we need to write (handles colors)
     ldr r10,[r10,0x3c]
     ;Call the macro and return
     render_text
