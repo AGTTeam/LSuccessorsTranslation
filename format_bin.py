@@ -4,7 +4,7 @@ from hacktools import common, nds
 
 binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
-freeranges = [(0xd8160+0x500, 0xd8160+0x8c500, True)]
+freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
 wordwrap2 = 230  # used for other lines
 
@@ -134,11 +134,11 @@ def postFormatString(binstr, pre, post):
         binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
         binstr = binstr.replace("|", "\\n")
     else:
-        binstr = common.wordwrap(binstr, glyphs, wordwrap2, detectTextCode, default=0xc)
+        binstr = common.wordwrap(binstr, glyphs, wordwrap2, detectTextCode, default=0xc, strip=False)
     binstr = pre + binstr + post
     binstr = binstr.replace(">>", "\\p\\P")
     binstr = binstr.replace("<end>", "\\p\\E")
-    # These need to be replated with other characters since cc/ar/nn/gr might be used in the scripts
+    # These need to be replaced with other characters since cc/ar/nn/gr might be used in the scripts
     # See bin_patch.asm (;Change code characters cc/ar/nn/gr)
     binstr = binstr.replace("<num>", "\\u")
     binstr = binstr.replace("<group>", "\\o")

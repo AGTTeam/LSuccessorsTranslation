@@ -4,7 +4,7 @@ draw_char equ 0x020065d0
 
 .open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
   .orga 0xd8160
-  .area 0x500
+  .area 0x600
 
   ;ASCII to SJIS lookup table, also includes VWF values
   SJIS_LOOKUP:
@@ -29,7 +29,6 @@ draw_char equ 0x020065d0
   ldrb r4,[r0,0x1]
   ;Load the char length in r7
   ldrb r7,[r0,0x2]
-  add r7,r7,0x2
   mov r0,r3,lsl 8
   orr r0,r0,r4
   ;Increase the script counter by 1
@@ -152,7 +151,6 @@ draw_char equ 0x020065d0
   orr r2,r2,r6
   ;Load the correct VWF value and add it to the VWF counter
   ldrb r6,[r5,0x2]
-  add r6,r6,0x2
   add r4,r0,r6
   str r4,[r3]
   ;TODO: type 2?
@@ -190,7 +188,6 @@ draw_char equ 0x020065d0
   pop {r0}
   b draw_char
   .pool
-
 
   ;0x020067b8/parse_string calls
   VWF_BIN_RESET:
@@ -307,6 +304,84 @@ draw_char equ 0x020065d0
   .org 0x02014f84
   ;cmp r6,0x3c
   cmp r6,0xff
+
+  ;Replace the BIN rendering function
+  .org 0x0200646c
+  .area 0x11c,0x0
+    push {r3-r11,lr}
+    ;Load font_vram in r8
+    ldr r5,=0x020d859c ;font_ptr
+    ldr r6,[r5,0x4]
+    ldr r6,[r6]
+    ldr r5,[r13,0x28] ;char_index
+    mov r8,0x1a
+    mla r8,r5,r8,r6
+    add r8,r8,0x2
+    ;Load ypos_vram in r12
+    add r3,r3,r4,lsr 0x1d
+    mov r3,r3,asr 0x3
+    mov r3,r3,lsl 0x4
+    mul r4,r1,r3
+    add r12,r0,r4,lsl 0x1
+    ;Load xpos_vram in r11 (=r2/8*32)
+    mov r11,r2,lsr 0x3
+    mov r11,r11,lsl 0x5
+    ;Register setup
+    ;r0 = vram ptr
+    ;r1 = row counter
+    ;r2 = col counter
+    ;r3 = font data
+    ;r4 = current shifted bits
+    ;r5 = amount of bits to skip in the first tile (xpos % 8)
+    mov r1,0x0
+    mov r5,0b111
+    and r5,r2,r5
+    @@row_loop:
+      ;Reset the vram ptr and add row*4
+      add r0,r12,r11
+      lsl r2,r1,0x2
+      add r0,r0,r2
+      ;If row >= 8, go to the tile below
+      ;-0x20 to start back from the first row
+      cmp r1,0x8
+      addge r0,r0,0x400-0x20
+      ;Prepare r4 and shift left by r5*4
+      mov r4,0xe
+      lsl r2,r5,0x2
+      lsl r4,r4,r2
+      ;Load the font data and start looping columns
+      ldrb r3,[r8],0x1
+      mov r2,0x0
+        @@col_loop:
+        ;Check if we need to move to the next tile
+        add r6,r5,r2
+        cmp r6,0x8
+        addeq r0,r0,0x20
+        moveq r4,0xe
+        cmp r6,0x10
+        addeq r0,r0,0x20
+        moveq r4,0xe
+        ;Check if the font bit is filled in
+        tst r3,0b10000000
+        ldrne r9,[r0]
+        orrne r9,r4
+        strne r9,[r0]
+        ;Shift r4/r3 and move to the next column
+        ;If r2 == 8 load more font bits
+        lsl r4,r4,0x4
+        lsl r3,r3,0x1
+        add r2,r2,0x1
+        cmp r2,0x8
+        ldreqb r3,[r8],0x1
+        cmp r2,0x10
+        blt @@col_loop
+      add r1,r1,0x1
+      cmp r1,0xc
+      blt @@row_loop
+    pop {r3-r11,lr}
+    bx lr
+    .pool
+  .endarea
 
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2
@@ -475,6 +550,46 @@ draw_char equ 0x020065d0
   .org 0x02035078
   ;cmpne r0,0x0
   nop
+
+
+  ;Move menu BIN lines a bit up
+  CENTERING_TWEAK equ 0x5
+  ;Function at 0x020144a4
+  .org 0x020144b8
+  ;mvn r4,0x61
+  mvn r4,0x61-CENTERING_TWEAK
+  ;Function at 0x020149d0
+  .org 0x020149e0
+  ;mvn r4,0x61
+  mvn r4,0x61-CENTERING_TWEAK
+  ;Function at 0x02015000
+  .org 0x02015018
+  ;mvn r5,0x61
+  mvn r5,0x61-CENTERING_TWEAK
+  ;Function at 0x0202fc70
+  .org 0x0202fc7c
+  ;mvn r4,0x61
+  mvn r4,0x61-CENTERING_TWEAK
+  ;Function at 0x02039c68
+  .org 0x02039df0
+  ;mvn r0,0x2f
+  mvn r0,0x2f-CENTERING_TWEAK
+  ;Function at 0x0203a040
+  .org 0x0203a04c
+  ;mvn r0,0x2f
+  mvn r0,0x2f-CENTERING_TWEAK
+  ;Function at 0x0203a5d4
+  .org 0x0203a5e0
+  ;mvn r0,0x3b
+  mvn r0,0x3b-CENTERING_TWEAK
+  ;Function at 0x0203b57c
+  .org 0x0203b67c
+  ;mvn r0,0x2f
+  mvn r0,0x2f-CENTERING_TWEAK
+  ;Function at 0x0203b57c
+  .org 0x0203b8a0
+  ;mvn r0,0x2f
+  mvn r0,0x2f-CENTERING_TWEAK
 
 
   ;Change code characters cc/ar/nn/gr
