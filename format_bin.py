@@ -70,8 +70,6 @@ def extract(data):
                     if not pointerrange[2]:
                         t.addEntry(binstr, "script", pointer)
                     else:
-                        if binstr.endswith("|"):
-                            binstr = binstr[:-1]
                         t.addEntry(binstr, "bin", pointer)
         # Extract the rest
         donestr = []
@@ -86,6 +84,9 @@ def extract(data):
 
 def preFormatString(binstr):
     post = pre = ""
+    if binstr.endswith("|"):
+        binstr = binstr[:-1]
+        post = "|" + post
     binstr = binstr.replace("\\p\\P", ">>")
     binstr = binstr.replace("\\p\\E", "<end>")
     binstr = binstr.replace("\\n", "|")
