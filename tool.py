@@ -46,7 +46,7 @@ def repack(no_rom, bin, font, img):
         import format_font
         format_font.repack(data)
     if all or img:
-        nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", ["NCGR", ".ICHR"], game.readImage, game.writeImage)
+        nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", [".NCGR", ".ICHR"], game.readImage, game.writeImage)
     if all or img or font:
         import format_archive
         format_archive.repack(data)

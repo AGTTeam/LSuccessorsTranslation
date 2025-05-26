@@ -181,8 +181,8 @@ def readImage(infolder, file, extension):
             if i == 668:
                 image.lineal = True
     elif extension == ".NCGR":
-        if os.path.isfile("LSuccessorsData/out_IMG/" + file.replace(".NCGR", ".png")):
-            common.logError("Image name conflict", file)
+        # if os.path.isfile("LSuccessorsData/out_IMG/" + file.replace(".NCGR", ".png")):
+        #    common.logError("Image name conflict", file)
         palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile
 
