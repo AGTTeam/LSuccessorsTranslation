@@ -12,8 +12,11 @@ def repack(data):
     filelist = data + "filelist.txt"
     outfolder = data + "extract_DATA/"
     workfolder = data + "repack_DATA/"
+    replacefolder = data + "replace_DATA/"
 
     common.logMessage("Repacking DATA ...")
+    if os.path.isdir(replacefolder):
+        common.mergeFolder(replacefolder, workfolder)
     filenum = 0x3cf9
     with codecs.open(filelist, "rb", "utf-8") as f:
         files = f.readlines()
