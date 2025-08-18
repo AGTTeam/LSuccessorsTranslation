@@ -16,6 +16,7 @@ def writeEncodedString(f, s, maxlen, encoding):
     s = s.replace("’", "]")
     s = s.replace("“", "{")
     s = s.replace("”", "}")
+    s = s.replace("ï", "$")
     # for name strings, there's actually a lot more space
     if f.tell() >= 0xa0730 and f.tell() < 0xa0a20:
         maxlen = 0xf
