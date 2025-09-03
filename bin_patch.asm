@@ -97,7 +97,7 @@ MAX_GLYPH_WIDTH equ 0x10
   .pool
   .endmacro
 
-  .macro bin_line,type,only_y
+  .macro bin_line,type
   push {r0-r1}
   mov r0,0x0
   ldr r1,=VWF_BIN_POS
@@ -106,9 +106,7 @@ MAX_GLYPH_WIDTH equ 0x10
     cmp r4,0x1
     addeq r1,r1,0x4*3
   .endif
-  .if only_y == 0x0
-    str r0,[r1]
-  .endif
+  str r0,[r1]
   ldr r0,[r1,0x4]
   add r0,r0,0x10
   str r0,[r1,0x4]
@@ -136,7 +134,7 @@ MAX_GLYPH_WIDTH equ 0x10
   bin_reset 0x0,0x0
 
   VWF_BIN_LINE_FUNC:
-  bin_line 0x0,0x0
+  bin_line 0x0
 
   VWF_BIN_FUNC:
   ;r0 = x position
@@ -226,7 +224,7 @@ MAX_GLYPH_WIDTH equ 0x10
 
 
   ;0x02006ff0/print_game_top_str calls
-  ;This one uses a separate struct
+  ;This one uses two separate structs
   VWF_BIN_START3:
   mov r8,0x0
   bin_reset 0x2,0x1
@@ -235,26 +233,28 @@ MAX_GLYPH_WIDTH equ 0x10
   bin_reset 0x2,0x0
 
   VWF_BIN_LINEBREAK3:
-  add r7,r7,0x1
-  bin_line 0x2,0x1
+  bin_line 0x2
 
   VWF_BIN3:
   vwf_bin_call 0x2
 
   ;This is an additional check we do here since the
   ;next character might be 0
+  read_byte equ 0x02006f98
   VFW_CHECK_BIN3:
   push {r0-r1,lr}
   ;call read_byte
   mov r0,r4
-  mov r1,r7
-  bl 0x02006f98
-  ;If it's 0xa we also need to check the next one
+  sub r1,r7,0x1
+  ;mov r1,r7
+  bl read_byte
+  ;If it's 0xa, linebreak and check the next one
   cmp r0,0xa
   bne @@check_zero
+  bl VWF_BIN_LINEBREAK3
   mov r0,r4
-  add r1,r7,0x1
-  bl 0x02006f98
+  mov r1,r7
+  bl read_byte
   @@check_zero:
   cmp r0,0x0
   bleq VWF_BIN_RESET3
@@ -318,6 +318,23 @@ MAX_GLYPH_WIDTH equ 0x10
   .org 0x02014f84
   ;cmp r6,0x3c
   cmp r6,0xff
+
+  ;Increase char limit for another function
+  .org 0x02015f84
+  ;sub r13,r13,0x40
+  sub r13,r13,0x40+0x40
+  .org 0x02015fac
+  ;cmp r1,0x36
+  cmp r1,0x36+0x40
+  .org 0x020161d8
+  ;cmp r6,0x1b
+  cmp r6,0x1b+0x20
+  .org 0x02016258
+  ;cmp r3,0x36
+  cmp r3,0x36+0x40
+  .org 0x02016338
+  ;add r13,r13,0x40
+  add r13,r13,0x40+0x40
 
   ;Replace the BIN rendering function
   .org 0x0200646c
@@ -544,14 +561,10 @@ MAX_GLYPH_WIDTH equ 0x10
 
 
   ;BIN print function at 0x02006ff0 (print_game_top_str)
-  ;To make things easier, we need to reset the y position every time the function is run
-  .org 0x02007004
-  ;mov r8,0x0
-  bl VWF_BIN_START3
-
-  .org 0x0200710c
-  ;add r7,r7,0x1
-  bl VWF_BIN_LINEBREAK3
+  ;Set r8 to 0 here to avoid skipping characters at line end
+  .org 0x0200712c
+  ;mov r8,0x2
+  mov r8,0x0
 
   .org 0x020072c4
   ;bl draw_char
@@ -567,7 +580,11 @@ MAX_GLYPH_WIDTH equ 0x10
   ;cmpne r10,0x0
   nop
   ;Break only on r9 being 0, don't check r10, jump to reset instead
-  .org 0x02007250
+  .org 0x02007248
+  ;cmp r9,0xa
+  nop
+  ;cmpne r9,0x0
+  cmp r9,0x0
   ;cmpne r10,0x0
   bleq VWF_BIN_RESET3
 
@@ -578,7 +595,6 @@ MAX_GLYPH_WIDTH equ 0x10
   .org 0x020071ec
   ;cmp r0,r2,asr 0x1
   cmp r0,r2
-
 
   ;BIN print function at 0x02014e38 (print_pre_game_str)
   .org 0x02014e44
