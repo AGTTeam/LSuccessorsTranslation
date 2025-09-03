@@ -126,6 +126,8 @@ def detectTextCode(s, i=0):
         return len(s[i:].split(">", 1)[0]) + 1
     if s[i] == "\\" and (s[i+1] == "T" or s[i+1] == "t"):
         return 6
+    if s[i] == "\\" and (s[i+1] == "c" or s[i+1] == "S"):
+        return 4
     return 0
 
 
