@@ -7,6 +7,7 @@ pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
 freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
 wordwrap2 = 160  # used for other lines
+wordwrap3 = 147  # used for top-screen lines during gameplay
 
 
 def repack(data):
@@ -133,7 +134,9 @@ def detectTextCode(s, i=0):
 
 def postFormatString(binstr, pre, post):
     global glyphs
-    if (binstr + post).endswith(">>") or (binstr + post).endswith("<end>"):
+    if len(pre) > 0 and ord(pre[:1]) >= 0x30 and ord(pre[:1]) <= 0x39:
+        binstr = common.wordwrap(binstr, glyphs, wordwrap3, detectTextCode, default=0xc)
+    elif (binstr + post).endswith(">>") or (binstr + post).endswith("<end>") or (binstr + post).endswith("\\p"):
         binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
         binstr = binstr.replace("|", "\\n")
     elif "|" not in binstr:
