@@ -75,28 +75,32 @@ MAX_GLYPH_WIDTH equ 0x10
   ;and one character at a time
   .dw 0 :: .dw 0 :: .dw 0
 
-  .macro bin_reset,type
+  .macro bin_reset,type,only_y
   push {r0-r1}
   mov r0,0x0
   ldr r1,=VWF_BIN_POS
   .if type == 0x2
     add r1,r1,0x4*3
   .endif
-  str r0,[r1]
+  .if only_y == 0x0
+    str r0,[r1]
+  .endif
   str r0,[r1,0x4]
   pop {r0-r1}
   bx lr
   .pool
   .endmacro
 
-  .macro bin_line,type
+  .macro bin_line,type,only_y
   push {r0-r1}
   mov r0,0x0
   ldr r1,=VWF_BIN_POS
   .if type == 0x2
     add r1,r1,0x4*3
   .endif
-  str r0,[r1]
+  .if only_y == 0x0
+    str r0,[r1]
+  .endif
   ldr r0,[r1,0x4]
   add r0,r0,0x10
   str r0,[r1,0x4]
@@ -120,16 +124,16 @@ MAX_GLYPH_WIDTH equ 0x10
   .endmacro
 
   VWF_BIN_RESET_FUNC:
-  bin_reset 0
+  bin_reset 0x0,0x0
 
   VWF_BIN_LINE_FUNC:
-  bin_line 0
+  bin_line 0x0,0x0
 
   VWF_BIN_FUNC:
   ;r0 = x position
   ;r1 = y position
   ;r2 = character
-  ;script index by type: r5 / r6 / r7? / r7 / r6
+  ;script index by type: r5 / r6 / none / r7 / r6
   ;Load the VWF value
   push {r3-r6}
   ldr r3,=VWF_BIN_POS
@@ -156,10 +160,6 @@ MAX_GLYPH_WIDTH equ 0x10
   ldrb r6,[r5,0x2]
   add r4,r0,r6
   str r4,[r3]
-  ;TODO: type 2?
-  ;ldr r4,[r3,0x8]
-  ;cmp r4,0x2
-  ;subeq r7,r7,0x1
   pop {r3-r6}
   b draw_char
   @@sjis:
@@ -178,10 +178,6 @@ MAX_GLYPH_WIDTH equ 0x10
   cmp r0,0x1
   addeq r6,r6,0x1
   beq @@ret
-  ;TODO: type 2?
-  ;cmpne r0,0x2
-  ;addeq r7,r7,0x1
-  ;beq @@ret
   cmp r0,0x3
   addeq r7,r7,0x1
   beq @@ret
@@ -220,12 +216,16 @@ MAX_GLYPH_WIDTH equ 0x10
 
   ;0x02006ff0/print_game_top_str calls
   ;This one uses a separate struct
+  VWF_BIN_START3:
+  mov r8,0x0
+  bin_reset 0x2,0x1
+
   VWF_BIN_RESET3:
-  bin_reset 0x2
+  bin_reset 0x2,0x0
 
   VWF_BIN_LINEBREAK3:
   add r7,r7,0x1
-  bin_line 0x2
+  bin_line 0x2,0x1
 
   VWF_BIN3:
   vwf_bin_call 0x2
@@ -533,23 +533,40 @@ MAX_GLYPH_WIDTH equ 0x10
 
 
   ;BIN print function at 0x02006ff0 (print_game_top_str)
+  ;To make things easier, we need to reset the y position every time the function is run
+  .org 0x02007004
+  ;mov r8,0x0
+  bl VWF_BIN_START3
+
   .org 0x0200710c
   ;add r7,r7,0x1
-  ;bl VWF_BIN_LINEBREAK3
+  bl VWF_BIN_LINEBREAK3
 
   .org 0x020072c4
   ;bl draw_char
-  ;bl VWF_BIN3
+  bl VWF_BIN3
   ;cmp r8,0x1
-  ;bl VFW_CHECK_BIN3
+  bl VFW_CHECK_BIN3
   .org 0x02007138
   ;add r7,r7,0x2
-  ;add r7,r7,0x1
+  add r7,r7,0x1
 
-  ;Break only on r9 being 0, don't check r10, jump to reset instead
+  ;Break only on r9 being 0, don't check r10
   .org 0x020070e0
   ;cmpne r10,0x0
-  ;bleq VWF_BIN_RESET3
+  nop
+  ;Break only on r9 being 0, don't check r10, jump to reset instead
+  .org 0x02007250
+  ;cmpne r10,0x0
+  bleq VWF_BIN_RESET3
+
+  ;Don't divide by 2 in these 2 checks
+  .org 0x0200715c
+  ;cmp r0,r2,asr 0x1
+  cmp r0,r2
+  .org 0x020071ec
+  ;cmp r0,r2,asr 0x1
+  cmp r0,r2
 
 
   ;BIN print function at 0x02014e38 (print_pre_game_str)
@@ -593,9 +610,15 @@ MAX_GLYPH_WIDTH equ 0x10
   ;cmpne r0,0x0
   nop
 
+  
+  ;Change this strcpy function so it doesn't divide the result by 2
+  .org 0x02006ee4
+  ;mov r2,r0,asr 0x1
+  mov r2,r0
 
-  ;Move menu BIN lines a bit up
-  CENTERING_TWEAK equ 0x5
+
+  ;Move menu BIN lines a bit down
+  CENTERING_TWEAK equ -0x2
   ;Function at 0x020144a4
   .org 0x020144b8
   ;mvn r4,0x61
