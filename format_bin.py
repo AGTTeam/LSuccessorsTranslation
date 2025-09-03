@@ -8,6 +8,7 @@ freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
 wordwrap2 = 160  # used for other lines
 wordwrap3 = 147  # used for top-screen lines during gameplay
+centering = 200  # used for centering lines starting with <<
 
 
 def repack(data):
@@ -134,13 +135,19 @@ def detectTextCode(s, i=0):
 
 def postFormatString(binstr, pre, post):
     global glyphs
+    linebreak = "|"
     if len(pre) > 0 and ord(pre[:1]) >= 0x30 and ord(pre[:1]) <= 0x39:
         binstr = common.wordwrap(binstr, glyphs, wordwrap3, detectTextCode, default=0xc)
     elif (binstr + post).endswith(">>") or (binstr + post).endswith("<end>") or (binstr + post).endswith("\\p"):
         binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
         binstr = binstr.replace("|", "\\n")
+        linebreak = "\\n"
     elif "|" not in binstr:
         binstr = common.wordwrap(binstr, glyphs, wordwrap2, detectTextCode, default=0xc, strip=False)
+    if binstr.count("<<") > 0:
+        binstr = common.centerLines(binstr, glyphs, centering, detectTextCode, default=0xc, linebreak=linebreak, centercode="<<")
+        # Replace every 6 spaces with a Japanese one
+        binstr = binstr.replace("      ", "　")
     binstr = pre + binstr + post
     binstr = binstr.replace(">>", "\\p\\P")
     binstr = binstr.replace("<end>", "\\p\\E")
