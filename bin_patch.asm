@@ -71,8 +71,12 @@ MAX_GLYPH_WIDTH equ 0x10
   .dw 0 ;xpos
   .dw 0 ;ypos
   .dw 0 ;type
-  ;repeat again for print_game_top_str since this prints at the same time
-  ;and one character at a time
+  ;repeat again 2 times for print_game_top_str
+  ;this function can be called with a 0 or 1 parameter, to print on top or bottom screen
+  ;this can actually happen at the same time as another normal print call
+  ;or you can have both print_game_top_str(0) print_game_top_str(1) at the same time
+  ;drawing 1 character at a time. This ensures there is no overlap for the VWF code
+  .dw 0 :: .dw 0 :: .dw 0
   .dw 0 :: .dw 0 :: .dw 0
 
   .macro bin_reset,type,only_y
@@ -81,6 +85,8 @@ MAX_GLYPH_WIDTH equ 0x10
   ldr r1,=VWF_BIN_POS
   .if type == 0x2
     add r1,r1,0x4*3
+    cmp r4,0x1
+    addeq r1,r1,0x4*3
   .endif
   .if only_y == 0x0
     str r0,[r1]
@@ -97,6 +103,8 @@ MAX_GLYPH_WIDTH equ 0x10
   ldr r1,=VWF_BIN_POS
   .if type == 0x2
     add r1,r1,0x4*3
+    cmp r4,0x1
+    addeq r1,r1,0x4*3
   .endif
   .if only_y == 0x0
     str r0,[r1]
@@ -117,6 +125,7 @@ MAX_GLYPH_WIDTH equ 0x10
   ;store the type in both
   .if type == 0x2
     str r2,[r1,0x8+(0x4*3)]
+    str r2,[r1,0x8+(0x4*6)]
   .endif
   pop {r1-r2}
   b VWF_BIN_FUNC
@@ -139,6 +148,8 @@ MAX_GLYPH_WIDTH equ 0x10
   ldr r3,=VWF_BIN_POS
   ldr r0,[r3,0x8]
   cmp r0,0x2
+  addeq r3,r3,0x4*3
+  cmpeq r4,0x1
   addeq r3,r3,0x4*3
   ldr r0,[r3]
   ldr r1,[r3,0x4]
@@ -615,7 +626,6 @@ MAX_GLYPH_WIDTH equ 0x10
   .org 0x02006ee4
   ;mov r2,r0,asr 0x1
   mov r2,r0
-
 
   ;Move menu BIN lines a bit down
   CENTERING_TWEAK equ -0x2
