@@ -4,6 +4,10 @@ draw_char equ 0x020065d0
 ;This can be set to a lower value for English to speed up text rendering
 ;by only rendering the left half of a glyph. The original value is 0x10
 MAX_GLYPH_WIDTH equ 0x10
+;The new length for string buffers
+BUFFER_MEM_SIZE equ 0x200
+BUFFER_DIFF equ 0xd0
+BUFFER_LENGTH equ 0x90
 
 .open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
   .orga 0xd8160
@@ -198,154 +202,430 @@ MAX_GLYPH_WIDTH equ 0x10
   .pool
 
   ;0x020067b8/parse_string calls
-  VWF_BIN_RESET:
-  mov r9,r3
-  b VWF_BIN_RESET_FUNC
+    VWF_BIN_RESET:
+    mov r9,r3
+    b VWF_BIN_RESET_FUNC
 
-  VWF_BIN_LINEBREAK:
-  add r5,r5,0x1
-  b VWF_BIN_LINE_FUNC
+    VWF_BIN_LINEBREAK:
+    add r5,r5,0x1
+    b VWF_BIN_LINE_FUNC
 
-  VWF_BIN:
-  vwf_bin_call 0x0
+    VWF_BIN:
+    vwf_bin_call 0x0
 
 
   ;0x020073bc/print_game_str calls
-  VWF_BIN_RESET2:
-  mov r10,r0
-  b VWF_BIN_RESET_FUNC
+    VWF_BIN_RESET2:
+    mov r10,r0
+    b VWF_BIN_RESET_FUNC
 
-  VWF_BIN_LINEBREAK2:
-  add r6,r6,0x1
-  b VWF_BIN_LINE_FUNC
+    VWF_BIN_LINEBREAK2:
+    add r6,r6,0x1
+    b VWF_BIN_LINE_FUNC
 
-  VWF_BIN2:
-  vwf_bin_call 0x1
+    VWF_BIN2:
+    vwf_bin_call 0x1
 
 
   ;0x02006ff0/print_game_top_str calls
   ;This one uses two separate structs
-  VWF_BIN_START3:
-  mov r8,0x0
-  bin_reset 0x2,0x1
+    VWF_BIN_START3:
+    mov r8,0x0
+    bin_reset 0x2,0x1
 
-  VWF_BIN_RESET3:
-  bin_reset 0x2,0x0
+    VWF_BIN_RESET3:
+    bin_reset 0x2,0x0
 
-  VWF_BIN_LINEBREAK3:
-  bin_line 0x2
+    VWF_BIN_LINEBREAK3:
+    bin_line 0x2
 
-  VWF_BIN3:
-  vwf_bin_call 0x2
+    VWF_BIN3:
+    vwf_bin_call 0x2
 
-  ;This is an additional check we do here since the
-  ;next character might be 0
-  read_byte equ 0x02006f98
-  VFW_CHECK_BIN3:
-  push {r0-r1,lr}
-  ;call read_byte
-  mov r0,r4
-  sub r1,r7,0x1
-  ;mov r1,r7
-  bl read_byte
-  ;If it's 0xa, linebreak and check the next one
-  cmp r0,0xa
-  bne @@check_zero
-  bl VWF_BIN_LINEBREAK3
-  mov r0,r4
-  mov r1,r7
-  bl read_byte
-  @@check_zero:
-  cmp r0,0x0
-  bleq VWF_BIN_RESET3
-  pop {r0-r1,lr}
-  cmp r8,0x1
-  bx lr
-  .pool
+    ;This is an additional check we do here since the
+    ;next character might be 0
+    read_byte equ 0x02006f98
+    VFW_CHECK_BIN3:
+    push {r0-r1,lr}
+    ;call read_byte
+    mov r0,r4
+    sub r1,r7,0x1
+    ;mov r1,r7
+    bl read_byte
+    ;If it's 0xa, linebreak and check the next one
+    cmp r0,0xa
+    bne @@check_zero
+    bl VWF_BIN_LINEBREAK3
+    mov r0,r4
+    mov r1,r7
+    bl read_byte
+    @@check_zero:
+    cmp r0,0x0
+    bleq VWF_BIN_RESET3
+    pop {r0-r1,lr}
+    cmp r8,0x1
+    bx lr
+    .pool
 
 
   ;0x02014e38/print_pre_game_str calls
-  VWF_BIN_RESET4:
-  mov r10,r0
-  b VWF_BIN_RESET_FUNC
+    VWF_BIN_RESET4:
+    mov r10,r0
+    b VWF_BIN_RESET_FUNC
 
-  VWF_BIN_LINEBREAK4:
-  add r7,r7,0x1
-  b VWF_BIN_LINE_FUNC
+    VWF_BIN_LINEBREAK4:
+    add r7,r7,0x1
+    b VWF_BIN_LINE_FUNC
 
-  VWF_BIN4:
-  vwf_bin_call 0x3
+    VWF_BIN4:
+    vwf_bin_call 0x3
 
 
   ;0x02035050/unk_print_str calls
-  VWF_BIN_RESET5:
-  mov r10,r0
-  b VWF_BIN_RESET_FUNC
+    VWF_BIN_RESET5:
+    mov r10,r0
+    b VWF_BIN_RESET_FUNC
 
-  VWF_BIN_LINEBREAK5:
-  add r6,r6,0x1
-  b VWF_BIN_LINE_FUNC
+    VWF_BIN_LINEBREAK5:
+    add r6,r6,0x1
+    b VWF_BIN_LINE_FUNC
 
-  VWF_BIN5:
-  vwf_bin_call 0x4
+    VWF_BIN5:
+    vwf_bin_call 0x4
 
   .endarea
 .close
 
 .open "LSuccessorsData/repack/arm9.bin",0x02000000
   ;Load 2 bytes at a time, possibly unaligned, instead of using ldrh
-  .org 0x0204c9c8
-  ;mov r0,r1,lsl 0x1
-  mov r0,r1
-  ;ldrh r2,[r2,r0]
-  b LOAD_ASCII
-  LOAD_ASCII_RET:
+    .org 0x0204c9c8
+    ;mov r0,r1,lsl 0x1
+    mov r0,r1
+    ;ldrh r2,[r2,r0]
+    b LOAD_ASCII
+    LOAD_ASCII_RET:
 
-  .org 0x0204cd80
-  DRAW_SCRIPT_CHARACTER:
+    .org 0x0204cd80
+    DRAW_SCRIPT_CHARACTER:
+
+  ;This allocates space for 3 strings buffer, make it bigger
+  .org 0x0200698c
+    ;mov r0,0x130
+    mov r0,BUFFER_MEM_SIZE
+  ;These portion of memory decide how long a string buffer is
+  ;The first 3 numbers are the max amount of (fixed-width) chars in a line
+  ;The other numbers are the max amount of lines
+  ;The max length ends up being (max_chars * max_lines + 3) * 2 + 2
+  ;For example the 1st one is (0xd * 0x3 + 3) * 2 + 2 = 0x56
+  ;The other ones are 0x38 and 0x78
+  ;Let's set them all to BUFFER_LENGTH
+  .org 0x0206ca90
+    ;.dh 0xd
+    .dh (BUFFER_LENGTH - 8) / 2
+    ;.dh 0xc
+    .dh (BUFFER_LENGTH - 8) / 2
+    ;.dh 0xd
+    .dh (BUFFER_LENGTH - 8) / 2
+    ;.dh 0x3
+    .dh 0x1
+    ;.dh 0x2
+    .dh 0x1
+    ;.dh 0x4
+    .dh 0x1
+  ;Of course, these original lengths are also hardcoded in other places
+  ;prepare_buffer
+    .org 0x02006a6c
+    ;cmp r6,0x5a
+    cmp r6,BUFFER_LENGTH
+    .org 0x02006a88
+    ;strb r5,[r2,0x5a]
+    strb r5,[r2,BUFFER_LENGTH]
+    .org 0x02006a8c
+    ;cmp r3,0x38
+    cmp r3,BUFFER_LENGTH
+    .org 0x02006aa8
+    ;strb r2,[r3,0x92]
+    strb r2,[r3,BUFFER_LENGTH*2]
+    .org 0x02006aac
+    ;cmp r5,0x78
+    cmp r5,BUFFER_LENGTH
+  ;copy_str
+    .org 0x02006d78
+    ;strb r8,[r1,0x5a]
+    strb r8,[r1,BUFFER_LENGTH]
+    .org 0x02006dcc
+    ;strb r7,[r1,0x5a]
+    strb r7,[r1,BUFFER_LENGTH]
+    .org 0x02006e44
+    ;strb r8,[r1,0x92]
+    strb r8,[r1,BUFFER_LENGTH*2]
+    .org 0x02006e98
+    ;strb r14,[r1,0x92]
+    strb r14,[r1,BUFFER_LENGTH*2]
+  ;read_byte
+    .org 0x02006fc4
+    ;ldrsb r0,[r0,0x5a]
+    ldrb r0,[r0,BUFFER_LENGTH]
+    .org 0x02006fe4
+    ;ldrsb r0,[r0,0x92]
+    ldrb r0,[r0,BUFFER_LENGTH*2]
+  ;02006af8
+    .org 0x02006b84
+    ;strb r3,[r1,0x5a]
+    strb r3,[r1,BUFFER_LENGTH]
+    .org 0x02006bdc
+    ;strb r3,[r1,0x92]
+    strb r3,[r1,BUFFER_LENGTH*2]
+  ;There's also several places that point at the end of this buffer
+  ;These are the indexes and what we'll change them to:
+  ;0x10a 2*3 bytes -> 0x1da
+  ;0x110 2*3 bytes -> 0x1e0
+  ;0x116 2*3 bytes -> 0x1e6
+  ;0x11c 2*3 bytes -> 0x1ec
+  ;0x122 1*3 bytes -> 0x1f2
+  ;0x125 1*3 bytes -> 0x1f5
+  ;0x128 1*3 bytes -> 0x1f8
+  ;There's also an additional 4 bytes set at 0x12c -> 0x1fc  -- ends at 0x130 / 0x200
+  ;Since the opcodes are generally divided in "add r,r,0x100" and "strh r,[r,0xa]" for example
+  ;We can just change the first opcode to "add r,r,0x1d0"
+  ;prepare_buffer
+    .org 0x020069b8
+    str r5,[r3,0x12c+BUFFER_DIFF]
+    .org 0x020069e0
+    add r7,r7,0x100+BUFFER_DIFF
+    .org 0x02006a00
+    add r7,r7,0x100+BUFFER_DIFF
+    .org 0x02006a10
+    add r7,r7,0x100+BUFFER_DIFF
+    .org 0x02006a20
+    add r7,r7,0x100+BUFFER_DIFF
+    .org 0x02006a30
+    strb r6,[r7,0x122+BUFFER_DIFF]
+    .org 0x02006a3c
+    strb r6,[r7,0x125+BUFFER_DIFF]
+    .org 0x02006a4c
+    strb r2,[r7,0x128+BUFFER_DIFF]
+  ;copy_str
+    .org 0x02006c98
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006cc0
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006cd4
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006d30
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006d5c
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006d88
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006d9c
+    add r12,r6,0x100+BUFFER_DIFF
+    .org 0x02006dfc
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006e28
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006e54
+    add r14,r7,0x100+BUFFER_DIFF
+    .org 0x02006e68
+    add r12,r6,0x100+BUFFER_DIFF
+    .org 0x02006ec8
+    add r14,r14,0x100+BUFFER_DIFF
+    .org 0x02006eec
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x02006f00
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006f14
+    strb r6,[r1,0x122+BUFFER_DIFF]
+    .org 0x02006f24
+    strb r0,[r1,0x125+BUFFER_DIFF]
+    .org 0x02006f34
+    strb r2,[r1,0x128+BUFFER_DIFF]
+  ;02006af8
+    .org 0x02006b14
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006b3c
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006b68
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006b94
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006bc0
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006bec
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02006c10
+    add r2,r2,0x100+BUFFER_DIFF
+    .org 0x02006c24
+    add r2,r2,0x100+BUFFER_DIFF
+    .org 0x02006c34
+    strb r1,[r2,0x122+BUFFER_DIFF]
+    .org 0x02006c40
+    strb r1,[r2,0x125+BUFFER_DIFF]
+    .org 0x02006c4c
+    strb r12,[r0,0x128+BUFFER_DIFF]
+  ;print_game_top_str
+    .org 0x0200700c
+    ldrb r1,[r1,0x122+BUFFER_DIFF]
+    .org 0x02007024
+    add r2,r1,0x100+BUFFER_DIFF
+    .org 0x02007044
+    add r3,r0,0x11c+BUFFER_DIFF
+    .org 0x0200704c
+    ldr r0,[r0,0x12c+BUFFER_DIFF]
+    .org 0x02007064
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x02007104
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02007140
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x0200719c
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x020071d0
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x0200726c
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x0200729c
+    ldrb r3,[r1,0x128+BUFFER_DIFF]
+    .org 0x02007304
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x02007330
+    ldrb r3,[r1,0x128+BUFFER_DIFF]
+  ;02007370
+    .org 0x0200737c
+    ldrb r1,[r1,0x122+BUFFER_DIFF]
+    .org 0x02007390
+    add r0,r0,0x100+BUFFER_DIFF
+  ;print_game_str
+    .org 0x020073d4
+    ldrb r0,[r1,0x125+BUFFER_DIFF]
+    .org 0x020073e4
+    ldrb r0,[r1,0x122+BUFFER_DIFF]
+    .org 0x020073f8
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x02007450
+    add r1,r1,0x100+BUFFER_DIFF
+    .org 0x02007490
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x020074c8
+    ldrb r3,[r1,0x128+BUFFER_DIFF]
+    .org 0x02007524
+    add r2,r2,0x100+BUFFER_DIFF
+    .org 0x0200754c
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x0200757c
+    ldrb r2,[r1,0x128+BUFFER_DIFF]
+    .org 0x020075c4
+    add r0,r0,0x100+BUFFER_DIFF
+    .org 0x020075e4
+    strb r1,[r0,0x125+BUFFER_DIFF]
+    
 
   ;Increase char limit for count_lines
-  .org 0x0201445c
-  ;cmp r2,0x72
-  cmp r2,0xff
-
+    .org 0x0201445c
+    ;cmp r2,0x72
+    cmp r2,0xff
   ;Increase char limit for parse_string
-  .org 0x0200682c
-  ;mul r0,r4,r0
-  mov r0,0xff
-
+    .org 0x0200682c
+    ;mul r0,r4,r0
+    mov r0,0xff
   ;Increase char limit for print_pre_game_str
-  .org 0x02014f84
-  ;cmp r6,0x3c
-  cmp r6,0xff
-
-  ;Increase char limit for another function
-  .org 0x02015f84
-  ;sub r13,r13,0x40
-  sub r13,r13,0x40+0x40
-  .org 0x02015fac
-  ;cmp r1,0x36
-  cmp r1,0x36+0x40
-  .org 0x020161d8
-  ;cmp r6,0x1b
-  cmp r6,0x1b+0x20
-  .org 0x02016258
-  ;cmp r3,0x36
-  cmp r3,0x36+0x40
-  .org 0x02016338
-  ;add r13,r13,0x40
-  add r13,r13,0x40+0x40
+    .org 0x02014f84
+    ;cmp r6,0x3c
+    cmp r6,0xff
 
   ;Increase char limit for check_text_codes1
-  .org 0x02014860
-  ;sub r13,r13,0x74
-  sub r13,r13,0x74+0x40
-  .org 0x02014950
-  ;cmp r5,0x37
-  cmp r5,0x37+0x20
-  .org 0x02014974
-  ;add r13,r13,0x74
-  add r13,r13,0x74+0x40
+    .org 0x02014860
+    ;sub r13,r13,0x74
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x02014950
+    ;cmp r5,0x37
+    cmp r5,BUFFER_LENGTH/2
+    .org 0x02014974
+    ;add r13,r13,0x74
+    add r13,r13,BUFFER_LENGTH+0x10
+
+  ;Increase char limit for check_text_codes2
+    .org 0x02014b78
+    ;sub r13,r13,0x44
+    sub r13,r13,BUFFER_LENGTH
+    .org 0x02014ba0
+    ;cmp r2,0x44
+    cmp r2,BUFFER_LENGTH
+    .org 0x02014e10
+    ;cmp r8,0x22
+    cmp r8,BUFFER_LENGTH/2
+    .org 0x02014e24
+    ;add r13,r13,0x44
+    add r13,r13,BUFFER_LENGTH
+
+  ;Increase char limit for check_text_codes3
+    .org 0x02015708
+    ;sub r13,r13,0x58
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x020158e4
+    ;cmp r8,0x29
+    cmp r8,BUFFER_LENGTH/2
+    .org 0x0201591c
+    ;add r13,r13,0x58
+    add r13,r13,BUFFER_LENGTH+0x10
+
+  ;Increase char limit for check_text_codes4
+    .org 0x02015f84
+    ;sub r13,r13,0x40
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x02015fac
+    ;cmp r1,0x36
+    cmp r1,BUFFER_LENGTH
+    .org 0x020161d8
+    ;cmp r6,0x1b
+    cmp r6,BUFFER_LENGTH/2
+    .org 0x02016258
+    ;cmp r3,0x36
+    cmp r3,BUFFER_LENGTH
+    .org 0x02016338
+    ;add r13,r13,0x40
+    add r13,r13,BUFFER_LENGTH+0x10
+
+  ;Increase char limit for 020159fc
+    .org 0x02015a00
+    ;sub r13,r13,0x58
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x02015aa4
+    ;cmp r2,0x53
+    cmp r2,BUFFER_LENGTH
+    .org 0x02015acc
+    ;add r13,r13,0x58
+    add r13,r13,BUFFER_LENGTH+0x10
+  ;Increase char limit for 020155dc
+    .org 0x020155e0
+    ;sub r13,r13,0x58
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x020156bc
+    ;cmp r2,0x53
+    cmp r2,BUFFER_LENGTH
+    .org 0x020156e8
+    ;add r13,r13,0x58
+    add r13,r13,BUFFER_LENGTH+0x10
+  ;Increase char limit for 02015464
+    .org 0x02015468
+    ;sub r13,r13,0x58
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x02015540
+    ;cmp r2,0x53
+    cmp r2,BUFFER_LENGTH
+    .org 0x02015564
+    ;add r13,r13,0x58
+    add r13,r13,BUFFER_LENGTH+0x10
+  ;Increase char limit for 020153e0
+    .org 0x020153e4
+    ;sub r13,r13,0x58
+    sub r13,r13,BUFFER_LENGTH+0x10
+    .org 0x02015438
+    ;cmp r2,0x53
+    cmp r2,BUFFER_LENGTH
+    .org 0x0201545c
+    ;add r13,r13,0x58
+    add r13,r13,BUFFER_LENGTH+0x10
 
   ;Replace the BIN rendering function
   .org 0x0200646c
@@ -464,6 +744,15 @@ MAX_GLYPH_WIDTH equ 0x10
     .pool
   .endarea
 
+  ;The function at 02015f28 checks strings 2 bytes at a time and checks for a line break only on the first char
+  ;Since it assumes 2-bytes characters. Check just 1 byte at a time
+  .org 0x02015f38
+  ;ldrsbne r2,[r2,0x1]
+  mov r2,r3
+  .org 0x02015f70
+  ;add r1,r1,0x2
+  add r1,r1,0x1
+
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2
   .org 0x0204ccc0
@@ -531,229 +820,234 @@ MAX_GLYPH_WIDTH equ 0x10
 
 
   ;BIN print function at 0x020067b8 (parse_string)
-  .org 0x020067c8
-  ;mov r9,r3
-  bl VWF_BIN_RESET
+    .org 0x020067c8
+    ;mov r9,r3
+    bl VWF_BIN_RESET
 
-  .org 0x02006878
-  ;add r5,r5,0x1
-  bl VWF_BIN_LINEBREAK
+    .org 0x02006878
+    ;add r5,r5,0x1
+    bl VWF_BIN_LINEBREAK
 
-  .org 0x020068d8
-  ;bl draw_char
-  bl VWF_BIN
-  ;add r5,r5,0x2
-  add r5,r5,0x1
+    .org 0x020068d8
+    ;bl draw_char
+    bl VWF_BIN
+    ;add r5,r5,0x2
+    add r5,r5,0x1
 
-  ;Break only on r6 being 0, don't check r0
-  .org 0x0200685c
-  ;cmpne r0,0x0
-  nop
+    ;Break only on r6 being 0, don't check r0
+    .org 0x0200685c
+    ;cmpne r0,0x0
+    nop
 
   ;BIN print function at 0x020073bc (print_game_str)
-  .org 0x020073c8
-  ;mov r10,r0
-  bl VWF_BIN_RESET2
+    .org 0x020073c8
+    ;mov r10,r0
+    bl VWF_BIN_RESET2
 
-  .org 0x02007458
-  ;add r6,r6,0x1
-  bl VWF_BIN_LINEBREAK2
+    .org 0x02007458
+    ;add r6,r6,0x1
+    bl VWF_BIN_LINEBREAK2
 
-  .org 0x020074f0
-  ;bl draw_char
-  bl VWF_BIN2
-  ;add r6,r6,0x2
-  add r6,r6,0x1
+    .org 0x020074f0
+    ;bl draw_char
+    bl VWF_BIN2
+    ;add r6,r6,0x2
+    add r6,r6,0x1
 
-  ;Break only on r7 being 0, don't check r8
-  .org 0x02007434
-  ;cmpne r8,0x0
-  nop
+    ;Break only on r7 being 0, don't check r8
+    .org 0x02007434
+    ;cmpne r8,0x0
+    nop
+  
+    ;Multiply by 4 in this check for max length
+    .org 0x020075cc
+    ;cmp r5,r0
+    cmp r5,r0,lsl 0x2
 
 
   ;BIN print function at 0x02006ff0 (print_game_top_str)
-  ;Set r8 to 0 here to avoid skipping characters at line end
-  .org 0x0200712c
-  ;mov r8,0x2
-  mov r8,0x0
+    ;Set r8 to 0 here to avoid skipping characters at line end
+    .org 0x0200712c
+    ;mov r8,0x2
+    mov r8,0x0
 
-  .org 0x020072c4
-  ;bl draw_char
-  bl VWF_BIN3
-  ;cmp r8,0x1
-  bl VFW_CHECK_BIN3
-  .org 0x02007138
-  ;add r7,r7,0x2
-  add r7,r7,0x1
+    .org 0x020072c4
+    ;bl draw_char
+    bl VWF_BIN3
+    ;cmp r8,0x1
+    bl VFW_CHECK_BIN3
+    .org 0x02007138
+    ;add r7,r7,0x2
+    add r7,r7,0x1
 
-  ;Break only on r9 being 0, don't check r10
-  .org 0x020070e0
-  ;cmpne r10,0x0
-  nop
-  ;Break only on r9 being 0, don't check r10, jump to reset instead
-  .org 0x02007248
-  ;cmp r9,0xa
-  nop
-  ;cmpne r9,0x0
-  cmp r9,0x0
-  ;cmpne r10,0x0
-  bleq VWF_BIN_RESET3
+    ;Break only on r9 being 0, don't check r10
+    .org 0x020070e0
+    ;cmpne r10,0x0
+    nop
+    ;Break only on r9 being 0, don't check r10, jump to reset instead
+    .org 0x02007248
+    ;cmp r9,0xa
+    nop
+    ;cmpne r9,0x0
+    cmp r9,0x0
+    ;cmpne r10,0x0
+    bleq VWF_BIN_RESET3
 
-  ;Don't divide by 2 in these 2 checks
-  .org 0x0200715c
-  ;cmp r0,r2,asr 0x1
-  cmp r0,r2
-  .org 0x020071ec
-  ;cmp r0,r2,asr 0x1
-  cmp r0,r2
+    ;Don't divide by 2 in these 2 checks
+    .org 0x0200715c
+    ;cmp r0,r2,asr 0x1
+    cmp r0,r2
+    .org 0x020071ec
+    ;cmp r0,r2,asr 0x1
+    cmp r0,r2
 
-  ;BIN print function at 0x02014e38 (print_pre_game_str)
-  .org 0x02014e44
-  ;mov r10,r0
-  bl VWF_BIN_RESET4
+    ;BIN print function at 0x02014e38 (print_pre_game_str)
+    .org 0x02014e44
+    ;mov r10,r0
+    bl VWF_BIN_RESET4
 
-  .org 0x02014e90
-  ;add r7,r7,0x1
-  bl VWF_BIN_LINEBREAK4
+    .org 0x02014e90
+    ;add r7,r7,0x1
+    bl VWF_BIN_LINEBREAK4
 
-  .org 0x02014ef8
-  ;bl draw_char
-  bl VWF_BIN4
-  ;add r7,r7,0x2
-  add r7,r7,0x1
+    .org 0x02014ef8
+    ;bl draw_char
+    bl VWF_BIN4
+    ;add r7,r7,0x2
+    add r7,r7,0x1
 
-  ;Break only on r1 being 0, don't check r0
-  .org 0x02014e64
-  ;cmpne r0,0x0
-  nop
+    ;Break only on r1 being 0, don't check r0
+    .org 0x02014e64
+    ;cmpne r0,0x0
+    nop
 
 
   ;BIN print function at 0x02035050 (unk_print_str)
-  .org 0x0203505c
-  ;mov r10,r0
-  bl VWF_BIN_RESET5
+    .org 0x0203505c
+    ;mov r10,r0
+    bl VWF_BIN_RESET5
 
-  .org 0x020350a0
-  ;add r6,r6,0x1
-  bl VWF_BIN_LINEBREAK5
+    .org 0x020350a0
+    ;add r6,r6,0x1
+    bl VWF_BIN_LINEBREAK5
 
-  .org 0x02035100
-  ;bl draw_char
-  bl VWF_BIN5
-  ;add r6,r6,0x2
-  add r6,r6,0x1
+    .org 0x02035100
+    ;bl draw_char
+    bl VWF_BIN5
+    ;add r6,r6,0x2
+    add r6,r6,0x1
 
-  ;Braek only on r1 being 0, don't check r0
-  .org 0x02035078
-  ;cmpne r0,0x0
-  nop
+    ;Braek only on r1 being 0, don't check r0
+    .org 0x02035078
+    ;cmpne r0,0x0
+    nop
 
   
   ;Change this strcpy function so it doesn't divide the result by 2
-  .org 0x02006ee4
-  ;mov r2,r0,asr 0x1
-  mov r2,r0
+    .org 0x02006ee4
+    ;mov r2,r0,asr 0x1
+    mov r2,r0
 
   ;Move menu BIN lines a bit down
-  CENTERING_TWEAK equ -0x2
-  ;Function at 0x020144a4
-  .org 0x020144b8
-  ;mvn r4,0x61
-  mvn r4,0x61-CENTERING_TWEAK
-  ;Function at 0x020149d0
-  .org 0x020149e0
-  ;mvn r4,0x61
-  mvn r4,0x61-CENTERING_TWEAK
-  ;Function at 0x02015000
-  .org 0x02015018
-  ;mvn r5,0x61
-  mvn r5,0x61-CENTERING_TWEAK
-  ;Function at 0x0202fc70
-  .org 0x0202fc7c
-  ;mvn r4,0x61
-  mvn r4,0x61-CENTERING_TWEAK
-  ;Function at 0x02039c68
-  .org 0x02039df0
-  ;mvn r0,0x2f
-  mvn r0,0x2f-CENTERING_TWEAK
-  ;Function at 0x0203a040
-  .org 0x0203a04c
-  ;mvn r0,0x2f
-  mvn r0,0x2f-CENTERING_TWEAK
-  ;Function at 0x0203a5d4
-  .org 0x0203a5e0
-  ;mvn r0,0x3b
-  mvn r0,0x3b-CENTERING_TWEAK
-  ;Function at 0x0203b57c
-  .org 0x0203b67c
-  ;mvn r0,0x2f
-  mvn r0,0x2f-CENTERING_TWEAK
-  ;Function at 0x0203b57c
-  .org 0x0203b8a0
-  ;mvn r0,0x2f
-  mvn r0,0x2f-CENTERING_TWEAK
+    CENTERING_TWEAK equ -0x2
+    ;Function at 0x020144a4
+    .org 0x020144b8
+    ;mvn r4,0x61
+    mvn r4,0x61-CENTERING_TWEAK
+    ;Function at 0x020149d0
+    .org 0x020149e0
+    ;mvn r4,0x61
+    mvn r4,0x61-CENTERING_TWEAK
+    ;Function at 0x02015000
+    .org 0x02015018
+    ;mvn r5,0x61
+    mvn r5,0x61-CENTERING_TWEAK
+    ;Function at 0x0202fc70
+    .org 0x0202fc7c
+    ;mvn r4,0x61
+    mvn r4,0x61-CENTERING_TWEAK
+    ;Function at 0x02039c68
+    .org 0x02039df0
+    ;mvn r0,0x2f
+    mvn r0,0x2f-CENTERING_TWEAK
+    ;Function at 0x0203a040
+    .org 0x0203a04c
+    ;mvn r0,0x2f
+    mvn r0,0x2f-CENTERING_TWEAK
+    ;Function at 0x0203a5d4
+    .org 0x0203a5e0
+    ;mvn r0,0x3b
+    mvn r0,0x3b-CENTERING_TWEAK
+    ;Function at 0x0203b57c
+    .org 0x0203b67c
+    ;mvn r0,0x2f
+    mvn r0,0x2f-CENTERING_TWEAK
+    ;Function at 0x0203b57c
+    .org 0x0203b8a0
+    ;mvn r0,0x2f
+    mvn r0,0x2f-CENTERING_TWEAK
 
 
   ;Change code characters cc/ar/nn/gr
   ;cc (0x63 0x63) -> \a (0x5c 0x61)
-  .org 0x020148ac
-  ;cmp r3,0x63
-  cmp r3,0x5c
-  .skip 4
-  ;cmpeq r2,0x63
-  cmpeq r2,0x61
-  .org 0x02014d5c
-  ;cmp r2,0x63
-  cmp r2,0x5c
-  .skip 4
-  ;cmpeq r0,0x63
-  cmpeq r0,0x61
-  .org 0x020158a4
-  ;cmp r2,0x63
-  cmp r2,0x5c
-  .skip 4
-  ;cmpeq r0,0x63
-  cmpeq r0,0x61
+    .org 0x020148ac
+    ;cmp r3,0x63
+    cmp r3,0x5c
+    .skip 4
+    ;cmpeq r2,0x63
+    cmpeq r2,0x61
+    .org 0x02014d5c
+    ;cmp r2,0x63
+    cmp r2,0x5c
+    .skip 4
+    ;cmpeq r0,0x63
+    cmpeq r0,0x61
+    .org 0x020158a4
+    ;cmp r2,0x63
+    cmp r2,0x5c
+    .skip 4
+    ;cmpeq r0,0x63
+    cmpeq r0,0x61
 
   ;ar (0x61 0x72) -> \e (0x5c 0x65)
-  .org 0x020148d0
-  ;cmp r3,0x61
-  cmp r3,0x5c
-  .skip 4
-  ;cmpeq r2,0x72
-  cmpeq r2,0x65
-  .org 0x02014d84
-  ;cmp r1,0x61
-  cmp r1,0x5c
-  .skip 4
-  ;cmpeq r0,0x72
-  cmpeq r0,0x65
+    .org 0x020148d0
+    ;cmp r3,0x61
+    cmp r3,0x5c
+    .skip 4
+    ;cmpeq r2,0x72
+    cmpeq r2,0x65
+    .org 0x02014d84
+    ;cmp r1,0x61
+    cmp r1,0x5c
+    .skip 4
+    ;cmpeq r0,0x72
+    cmpeq r0,0x65
 
   ;nn (0x6e 0x6e) -> \u (0x5c 0x75)
-  .org 0x02014918
-  ;cmp r3,0x6e
-  cmp r3,0x5c
-  .skip 4
-  ;cmpeq r0,0x6e
-  cmpeq r0,0x75
-  .org 0x02014dd4
-  ;cmp r1,0x6e
-  cmp r1,0x5c
-  .skip 4
-  ;cmpeq r0,0x6e
-  cmpeq r0,0x75
+    .org 0x02014918
+    ;cmp r3,0x6e
+    cmp r3,0x5c
+    .skip 4
+    ;cmpeq r0,0x6e
+    cmpeq r0,0x75
+    .org 0x02014dd4
+    ;cmp r1,0x6e
+    cmp r1,0x5c
+    .skip 4
+    ;cmpeq r0,0x6e
+    cmpeq r0,0x75
 
   ;gr (0x67 0x72) -> \o (0x5c 0x6f)
-  .org 0x020148f4
-  ;cmp r3,0x67
-  cmp r3,0x5c
-  .skip 4
-  ;cmpeq r2,0x72
-  cmpeq r2,0x6f
-  .org 0x02014dac
-  ;cmp r1,0x67
-  cmp r1,0x5c
-  .skip 4
-  ;cmpeq r0,0x72
-  cmpeq r0,0x6f
+    .org 0x020148f4
+    ;cmp r3,0x67
+    cmp r3,0x5c
+    .skip 4
+    ;cmpeq r2,0x72
+    cmpeq r2,0x6f
+    .org 0x02014dac
+    ;cmp r1,0x67
+    cmp r1,0x5c
+    .skip 4
+    ;cmpeq r0,0x72
+    cmpeq r0,0x6f
 .close
