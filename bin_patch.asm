@@ -746,9 +746,6 @@ BUFFER_LENGTH equ 0x90
 
   ;The function at 02015f28 checks strings 2 bytes at a time and checks for a line break only on the first char
   ;Since it assumes 2-bytes characters. Check just 1 byte at a time
-  .org 0x02015f38
-  ;ldrsbne r2,[r2,0x1]
-  mov r2,r3
   .org 0x02015f70
   ;add r1,r1,0x2
   add r1,r1,0x1
