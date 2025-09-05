@@ -749,6 +749,30 @@ BUFFER_LENGTH equ 0x90
   .org 0x02015f70
   ;add r1,r1,0x2
   add r1,r1,0x1
+  ;Same for check_text_codes1
+  .org 0x02014944
+  ;add r1,r1,0x2
+  add r1,r1,0x1
+  ;add r6,r6,0x2
+  add r6,r6,0x1
+  ;Same for check_text_codes2
+  .org 0x02014e04
+  ;add r6,r6,0x2
+  add r6,r6,0x1
+  ;add r7,r7,0x2
+  add r7,r7,0x1
+  ;Same for check_text_codes3
+  .org 0x020158d4
+  ;add r6,r6,0x2
+  add r6,r6,0x1
+  ;add r7,r7,0x2
+  add r7,r7,0x1
+  ;Same for check_text_codes4
+  .org 0x020161cc
+  ;add r1,r1,0x2
+  add r1,r1,0x1
+  ;add r4,r4,0x2
+  add r4,r4,0x1
 
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2
