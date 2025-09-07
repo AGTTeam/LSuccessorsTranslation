@@ -115,8 +115,6 @@ BUFFER_LENGTH equ 0x90
   add r0,r0,0x10
   str r0,[r1,0x4]
   pop {r0-r1}
-  bx lr
-  .pool
   .endmacro
 
   .macro vwf_bin_call,type
@@ -139,6 +137,8 @@ BUFFER_LENGTH equ 0x90
 
   VWF_BIN_LINE_FUNC:
   bin_line 0x0
+  bx lr
+  .pool
 
   VWF_BIN_FUNC:
   ;r0 = x position
@@ -229,43 +229,68 @@ BUFFER_LENGTH equ 0x90
 
   ;0x02006ff0/print_game_top_str calls
   ;This one uses two separate structs
-    VWF_BIN_START3:
-    mov r8,0x0
-    bin_reset 0x2,0x1
+    ;We keep the counter for characters to print separated from the
+    ;string pointer (r7) to correctly handle mixed ASCII/SJIS characters
+    VWF_STOP_CHECK:
+    .dw 0
+    .macro increase_stop_check,amount
+      push {r0-r1}
+      ldr r0,=VWF_STOP_CHECK
+      .if amount == 0x0
+        mov r1,0x0
+      .else
+        ldr r1,[r0]
+        add r1,r1,amount
+      .endif
+      str r1,[r0]
+      pop {r0-r1}
+    .endmacro
 
-    VWF_BIN_RESET3:
+    VWF_BIN_START3:
+    add r0,r2,r0
+    increase_stop_check 0x0
+    cmp r2,0x0
+    bxgt lr
     bin_reset 0x2,0x0
+    .pool
 
     VWF_BIN_LINEBREAK3:
     bin_line 0x2
+    cmp r9,0xa
+    bx lr
+    .pool
 
     VWF_BIN3:
     vwf_bin_call 0x2
 
-    ;This is an additional check we do here since the
-    ;next character might be 0
-    read_byte equ 0x02006f98
-    VFW_CHECK_BIN3:
-    push {r0-r1,lr}
-    ;call read_byte
-    mov r0,r4
-    sub r1,r7,0x1
-    ;mov r1,r7
-    bl read_byte
-    ;If it's 0xa, linebreak and check the next one
-    cmp r0,0xa
-    bne @@check_zero
-    bl VWF_BIN_LINEBREAK3
-    mov r0,r4
-    mov r1,r7
-    bl read_byte
-    @@check_zero:
-    cmp r0,0x0
-    bleq VWF_BIN_RESET3
-    pop {r0-r1,lr}
-    cmp r8,0x1
+    VWF_INCREASE_STOP_CHECK:
+    add r7,r7,0x1
+    increase_stop_check 0x1
     bx lr
     .pool
+
+    VWF_GET_STOP_CHECK:
+    push {r0}
+    ldr r0,=VWF_STOP_CHECK
+    ldr r2,[r0]
+    pop {r0}
+    bx lr
+    .pool
+
+    ;Here we need to check r9, if it's ascii add 1 to r7 otherwise 2
+    VWF_ADVANCE3:
+    cmp r9,0x7f
+    addgt r7,r7,0x2
+    addle r7,r7,0x1
+    increase_stop_check 0x1
+    bx lr
+    .pool
+
+    ;Here we're breaking from the char reading loop, we need to decrease r7 by 1 if char is sjis
+    VWF_CHECK_LIMIT3:
+    cmp r9,0x7f
+    subgt r7,r7,0x1
+    b 0x020071f4
 
 
   ;0x02014e38/print_pre_game_str calls
@@ -292,6 +317,22 @@ BUFFER_LENGTH equ 0x90
 
     VWF_BIN5:
     vwf_bin_call 0x4
+  
+  ;History string, let's just hardcode it
+  HISTORY_STR:
+  mov r12,0x54 ;"T"
+  strb r12,[r13,0x0]
+  mov r12,0x75 ;"u"
+  strb r12,[r13,0x1]
+  mov r12,0x72 ;"r"
+  strb r12,[r13,0x2]
+  mov r12,0x6e ;"n"
+  strb r12,[r13,0x3]
+  mov r12,0x20 ;" "
+  strb r12,[r13,0x4]
+  mov r12,0xa ;line break at the end
+  strb r12,[r13,0x7]
+  bx lr
 
   .endarea
 .close
@@ -539,7 +580,7 @@ BUFFER_LENGTH equ 0x90
     sub r13,r13,BUFFER_LENGTH+0x10
     .org 0x02014950
     ;cmp r5,0x37
-    cmp r5,BUFFER_LENGTH/2
+    cmp r5,BUFFER_LENGTH
     .org 0x02014974
     ;add r13,r13,0x74
     add r13,r13,BUFFER_LENGTH+0x10
@@ -553,7 +594,7 @@ BUFFER_LENGTH equ 0x90
     cmp r2,BUFFER_LENGTH
     .org 0x02014e10
     ;cmp r8,0x22
-    cmp r8,BUFFER_LENGTH/2
+    cmp r8,BUFFER_LENGTH
     .org 0x02014e24
     ;add r13,r13,0x44
     add r13,r13,BUFFER_LENGTH
@@ -564,7 +605,7 @@ BUFFER_LENGTH equ 0x90
     sub r13,r13,BUFFER_LENGTH+0x10
     .org 0x020158e4
     ;cmp r8,0x29
-    cmp r8,BUFFER_LENGTH/2
+    cmp r8,BUFFER_LENGTH
     .org 0x0201591c
     ;add r13,r13,0x58
     add r13,r13,BUFFER_LENGTH+0x10
@@ -578,7 +619,7 @@ BUFFER_LENGTH equ 0x90
     cmp r1,BUFFER_LENGTH
     .org 0x020161d8
     ;cmp r6,0x1b
-    cmp r6,BUFFER_LENGTH/2
+    cmp r6,BUFFER_LENGTH
     .org 0x02016258
     ;cmp r3,0x36
     cmp r3,BUFFER_LENGTH
@@ -895,8 +936,6 @@ BUFFER_LENGTH equ 0x90
     .org 0x020072c4
     ;bl draw_char
     bl VWF_BIN3
-    ;cmp r8,0x1
-    bl VFW_CHECK_BIN3
     .org 0x02007138
     ;add r7,r7,0x2
     add r7,r7,0x1
@@ -905,14 +944,12 @@ BUFFER_LENGTH equ 0x90
     .org 0x020070e0
     ;cmpne r10,0x0
     nop
-    ;Break only on r9 being 0, don't check r10, jump to reset instead
-    .org 0x02007248
-    ;cmp r9,0xa
-    nop
+    ;Here if r9 is 0xa we need to line break, also don't check r10
+    .org 0x0200724c
     ;cmpne r9,0x0
-    cmp r9,0x0
+    bleq VWF_BIN_LINEBREAK3
     ;cmpne r10,0x0
-    bleq VWF_BIN_RESET3
+    cmpne r9,0x0
 
     ;Don't divide by 2 in these 2 checks
     .org 0x0200715c
@@ -922,7 +959,34 @@ BUFFER_LENGTH equ 0x90
     ;cmp r0,r2,asr 0x1
     cmp r0,r2
 
-    ;BIN print function at 0x02014e38 (print_pre_game_str)
+    ;These hooks are for keeping the str pointer separated from the char
+    ;counter and correctly handle mixed ASCII/SJIS characters
+    .org 0x02007050
+    ;add r0,r2,r0
+    bl VWF_BIN_START3
+    .org 0x02007138
+    ;add r7,r7,0x2
+    bl VWF_ADVANCE3
+    .org 0x0200710c
+    ;add r7,r7,0x1
+    bl VWF_INCREASE_STOP_CHECK
+    .org 0x0200714c
+    ;add r2,r7,r7,lsr 0x1f
+    bl VWF_GET_STOP_CHECK
+    .org 0x020071d8
+    ;add r2,r7,r7,lsr 0x1f
+    bl VWF_GET_STOP_CHECK
+    .org 0x02007164
+    ;ble 0x020071f4
+    ble VWF_CHECK_LIMIT3
+    .org 0x02007200
+    ;sub r1,r7,0x2
+    sub r1,r7,0x1
+    .org 0x02007210
+    ;sub r1,r7,0x1
+    mov r1,r7
+
+  ;BIN print function at 0x02014e38 (print_pre_game_str)
     .org 0x02014e44
     ;mov r10,r0
     bl VWF_BIN_RESET4
@@ -1018,8 +1082,8 @@ BUFFER_LENGTH equ 0x90
     ;cmpeq r2,0x63
     cmpeq r2,0x61
     .org 0x02014d5c
-    ;cmp r2,0x63
-    cmp r2,0x5c
+    ;cmp r1,0x63
+    cmp r1,0x5c
     .skip 4
     ;cmpeq r0,0x63
     cmpeq r0,0x61
@@ -1071,4 +1135,86 @@ BUFFER_LENGTH equ 0x90
     .skip 4
     ;cmpeq r0,0x72
     cmpeq r0,0x6f
+  
+  ;Change replacements for nn -> \u code to ASCII
+    .org 0x0206cadc
+    .asciiz "0_"
+    .org 0x0206caa4
+    .asciiz "1_"
+    .org 0x0206cab8
+    .asciiz "2_"
+    .org 0x0206cac8
+    .asciiz "3_"
+    .org 0x0206cacc
+    .asciiz "4_"
+    .org 0x0206cad8
+    .asciiz "5_"
+    .org 0x0206cae4
+    .asciiz "6_"
+    .org 0x0206cab4
+    .asciiz "7_"
+    .org 0x0206cae0
+    .asciiz "8_"
+    .org 0x0206caec
+    .asciiz "9_"
+  
+  ;Change replacements for ar -> \a code to ASCII
+    .org 0x0206cad0
+    .asciiz "A_"
+    .org 0x0206caf0
+    .asciiz "B_"
+    .org 0x0206cabc
+    .asciiz "C_"
+    .org 0x0206cab0
+    .asciiz "D_"
+    .org 0x0206caa0
+    .asciiz "E_"
+    .org 0x0206caf8
+    .asciiz "F_"
+    .org 0x0206ca9c
+    .asciiz "G_"
+  
+
+  ;Change print_history_turn to use ASCII
+  ;The new one will be "Turn xx|"
+    .org 0x02035200
+    ;strb r3,[r13]
+    strb r3,[r13,0x5]
+    .org 0x02035210
+    ;strb r0,[r13,0x1]
+    nop
+    .org 0x0203521c
+    ;strb r4,[r13,0x2]
+    strb r4,[r13,0x6]
+    .org 0x02035224
+    ;strb r12,[r13,0x3]
+    nop
+    ;strb r3,[r13,0x4]
+    nop
+    ;strb r2,[r13,0x5]
+    nop
+    ;strb r14,[r13,0x6]
+    bl HISTORY_STR
+  ;Change replacements to ASCII
+    .org 0x0209b904
+    .asciiz "0"
+    .org 0x0209b900
+    .asciiz "1"
+    .org 0x0209b8fc
+    .asciiz "2"
+    .org 0x0209b8f8
+    .asciiz "3"
+    .org 0x0209b8f4
+    .asciiz "4"
+    .org 0x0209b8f0
+    .asciiz "5"
+    .org 0x0209b8ec
+    .asciiz "6"
+    .org 0x0209b8e8
+    .asciiz "7"
+    .org 0x0209b8e4
+    .asciiz "8"
+    .org 0x0209b8e0
+    .asciiz "9"
+
 .close
