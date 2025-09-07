@@ -318,6 +318,14 @@ BUFFER_LENGTH equ 0x90
     VWF_BIN5:
     vwf_bin_call 0x4
   
+  ;Add a space when adding an extra letter in replace_cc_code
+  REPLACE_CC_SPACE:
+  mov r14,0x20
+  strb r14,[r0,r1]
+  add r1,r1,0x1
+  mov r14,0x0
+  b REPLACE_CC_SPACE_RET
+  
   ;History string, let's just hardcode it
   HISTORY_STR:
   mov r12,0x54 ;"T"
@@ -1071,7 +1079,17 @@ BUFFER_LENGTH equ 0x90
     .org 0x0203b8a0
     ;mvn r0,0x2f
     mvn r0,0x2f-CENTERING_TWEAK
+  
 
+  ;Tweak replace_cc_code to copy more bytes
+  .org 0x020145f0
+  ;cmp r14,0xb
+  cmp r14,0x10
+  ;Jump here to add a space
+  .org 0x02014614
+  ;mov r14,0x0
+  b REPLACE_CC_SPACE
+  REPLACE_CC_SPACE_RET:
 
   ;Change code characters cc/ar/nn/gr
   ;cc (0x63 0x63) -> \a (0x5c 0x61)
@@ -1090,6 +1108,12 @@ BUFFER_LENGTH equ 0x90
     .org 0x020158a4
     ;cmp r2,0x63
     cmp r2,0x5c
+    .skip 4
+    ;cmpeq r0,0x63
+    cmpeq r0,0x61
+    .org 0x0201619c
+    ;cmp r3,0x63
+    cmp r3,0x5c
     .skip 4
     ;cmpeq r0,0x63
     cmpeq r0,0x61
@@ -1158,7 +1182,7 @@ BUFFER_LENGTH equ 0x90
     .org 0x0206caec
     .asciiz "9_"
   
-  ;Change replacements for ar -> \a code to ASCII
+  ;Change replacements for ar -> \e and cc -> \a code to ASCII
     .org 0x0206cad0
     .asciiz "A_"
     .org 0x0206caf0
@@ -1173,6 +1197,12 @@ BUFFER_LENGTH equ 0x90
     .asciiz "F_"
     .org 0x0206ca9c
     .asciiz "G_"
+    .org 0x0206caa8
+    .asciiz "H_"
+    .org 0x0206caf4
+    .asciiz "I_"
+    .org 0x0206cac4
+    .asciiz "J_"
   
 
   ;Change print_history_turn to use ASCII
