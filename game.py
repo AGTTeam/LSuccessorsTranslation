@@ -150,8 +150,6 @@ def readImage(infolder, file, extension):
         mapfile = ""
         if file == "file00025.ICHR":
             mapfile = "file00025.ISCR"
-        elif file == "file00027.ICHR":
-            mapfile = "file00028_0001.ISCR"
         elif file == "file00555.ICHR":
             palettefile = "file00554.ISCR"
         cellfile = ""
@@ -177,13 +175,11 @@ def readImage(infolder, file, extension):
         if image is not None:
             width = image.width
             height = image.height
-            if (i >= 260 and i <= 293):
+            if i == 28 or (i >= 260 and i <= 293):
                 image.lineal = False
             if i == 668:
                 image.lineal = True
     elif extension == ".NCGR":
-        # if os.path.isfile("LSuccessorsData/out_IMG/" + file.replace(".NCGR", ".png")):
-        #    common.logError("Image name conflict", file)
         palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile
 
