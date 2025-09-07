@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, nds, nitro
 
-version = "0.7.0"
+version = "0.8.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
