@@ -306,7 +306,7 @@ BUFFER_LENGTH equ 0x90
     vwf_bin_call 0x3
 
 
-  ;0x02035050/unk_print_str calls
+  ;0x02035050/print_history_str calls
     VWF_BIN_RESET5:
     mov r10,r0
     b VWF_BIN_RESET_FUNC
@@ -581,6 +581,10 @@ BUFFER_LENGTH equ 0x90
     .org 0x02014f84
     ;cmp r6,0x3c
     cmp r6,0xff
+  ;Increase char limit for print_history_str
+    .org 0x0203515c
+    ;cmp r5,0x90
+    cmp r5,0xff
 
   ;Increase char limit for check_text_codes1
     .org 0x02014860
@@ -1015,7 +1019,7 @@ BUFFER_LENGTH equ 0x90
     nop
 
 
-  ;BIN print function at 0x02035050 (unk_print_str)
+  ;BIN print function at 0x02035050 (print_history_str)
     .org 0x0203505c
     ;mov r10,r0
     bl VWF_BIN_RESET5
