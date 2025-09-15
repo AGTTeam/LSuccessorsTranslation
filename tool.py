@@ -1,9 +1,10 @@
 import os
 import click
 import game
+from editor import EditorApp
 from hacktools import common, nds, nitro
 
-version = "0.8.0"
+version = "0.9.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
@@ -58,6 +59,12 @@ def repack(no_rom, bin, font, img):
             common.mergeFolder(replacefolder, outfolder)
         nds.editBannerTitle(bannerfile, "DEATH NOTE\n~Successors to L~\nKonami Digital Entertainment")
         nds.repackRom(romfile, rompatch, outfolder, patchfile)
+
+
+@common.cli.command(hidden=True)
+def editor():
+    app = EditorApp(version)
+    app.mainloop()
 
 
 if __name__ == "__main__":
