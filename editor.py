@@ -1,5 +1,6 @@
 import codecs
 import customtkinter
+import json
 import os
 import tkinter
 from PIL import Image
@@ -22,7 +23,11 @@ class CustomTextBox(customtkinter.CTkTextbox):
         if currenttext != self.oldtext:
             self.oldtext = currenttext
             self.callback(self.lbl, currenttext)
-        
+
+
+class EditorOptions:
+    def __init__(self, cursor="bin///605461"):
+        self.cursor = cursor
 
 
 class EditorFrame(customtkinter.CTkScrollableFrame):
@@ -60,6 +65,10 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
         self.start.append((16, 25))
         self.wordwrap.append(format_bin.wordwrap3)
         self.lineheight.append(0x10)
+        self.backgrounds.append(Image.open("backgrounds/fullscreen_00.png").convert("RGBA"))
+        self.start.append((28, 20))
+        self.wordwrap.append(format_bin.wordwrap)
+        self.lineheight.append(0xc)
 
         with codecs.open(fontconfig, "r", "utf-8") as input:
             section = common.getSection(input, "", inorder=True)
@@ -84,6 +93,13 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
                 for x in range(self.font[char].width):
                     if pixels[x, y] == (0, 0, 0, 255):
                         pixels[x, y] = (0, 0, 0, 0)
+    
+    def extendImage(self, img):
+        old_img = img
+        img = Image.new("RGBA", (old_img.width, old_img.height + self.backgrounds[self.usebg].height))
+        img.paste(old_img, (0, 0))
+        img.paste(self.backgrounds[self.usebg], (0, old_img.height))
+        return img
 
     def generateImage(self, lbl, text):
         img = self.backgrounds[self.usebg].copy()
@@ -94,16 +110,13 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
         if "#" in text:
             text = text.split("#")[0]
         wordwrapped = common.wordwrap(text, self.glyphs, self.wordwrap[self.usebg], format_bin.detectTextCode, strip=False)
-        if (wordwrapped.count("|") > 1 and self.usebg == 2) or (wordwrapped.count("|") > 2 and self.usebg == 0):
-            old_img = img
-            img = Image.new("RGBA", (old_img.width, self.backgrounds[self.usebg].height * 2))
-            img.paste(old_img, (0, 0))
-            img.paste(old_img, (0, old_img.height))
-        if wordwrapped.count("|") > 3 and self.usebg == 2:
-            old_img = img
-            img = Image.new("RGBA", (old_img.width, self.backgrounds[self.usebg].height * 3))
-            img.paste(old_img, (0, 0))
-            img.paste(self.backgrounds[self.usebg], (0, old_img.height))
+        if wordwrapped.count("<<") > 0:
+            wordwrapped = common.centerLines(wordwrapped, self.glyphs, format_bin.centering, format_bin.detectTextCode, default=0xc, linebreak="|", centercode="<<")
+        if wordwrapped.count(">>") == 0:
+            if (wordwrapped.count("|") > 1 and self.usebg == 2) or (wordwrapped.count("|") > 2 and self.usebg == 0):
+                img = self.extendImage(img)
+            if wordwrapped.count("|") > 3 and self.usebg == 2:
+                img = self.extendImage(img)
         i = 0
         while i < len(wordwrapped):
             c = wordwrapped[i]
@@ -115,9 +128,21 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
             c = c.replace("～", "〜")
             if c == "#":
                 break
+            if c == ">" and wordwrapped[i+1] == ">":
+                i += 2
+                currentx = startx
+                currenty = img.height + starty
+                img = self.extendImage(img)
+                continue
             if c == "<":
                 textcode = wordwrapped[i:].split(">", 1)[0]
                 i += len(textcode) + 1
+                continue
+            if c == "\\" and (wordwrapped[i+1] == "T" or wordwrapped[i+1] == "t"):
+                i += 6
+                continue
+            if c == "\\" and (wordwrapped[i+1] == "c" or wordwrapped[i+1] == "S"):
+                i += 4
                 continue
             if c == "|":
                 currentx = startx
@@ -164,16 +189,18 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
             return
         for i in range(10):
             original = section.offlookup[section.offsets[self.idfile][self.currentoff + i]]
-            lbl = customtkinter.CTkLabel(self, text="")
-            lbl.grid(row=row, column=0, padx=10, pady=5)
-            text = CustomTextBox(self, width=400, height=65)
+            frame = customtkinter.CTkFrame(self)
+            frame.grid(row=row, column=0, padx=10, pady=2)
+            lbl = customtkinter.CTkLabel(frame, text="")
+            lbl.grid(row=0, column=0, padx=10, pady=5)
+            text = CustomTextBox(frame, width=400, height=65)
             text.lbl = lbl
             text.callback = self.generateImage
             text.insert(tkinter.END, section.getEntry(original, self.idfile, section.offsets[self.idfile][self.currentoff + i]))
-            text.grid(row=row, column=1, padx=10, pady=5)
-            text2 = customtkinter.CTkTextbox(self, width=400, height=65)
+            text.grid(row=0, column=1, padx=10, pady=5)
+            text2 = customtkinter.CTkTextbox(frame, width=400, height=65)
             text2.insert(tkinter.END, original)
-            text2.grid(row=row, column=2, padx=10, pady=5)
+            text2.grid(row=0, column=2, padx=10, pady=5)
             text2.configure(state="disabled")  
             self.alltexts.append((text, text2))
             row += 1
@@ -183,10 +210,19 @@ class EditorApp(customtkinter.CTk):
     def __init__(self, version):
         super().__init__()
         self.title("LSuccessorsTranslation v" + version + " Editor")
-        self.choices = ["story", "menu", "gametop", "gamebottom"]
+        self.choices = ["story", "menu", "gametop", "gamebottom", "fullscreen"]
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=1)
+        self.options = EditorOptions()
+        self.configdir = os.path.expanduser("~/.hacktools/")
+        self.appname = "LSuccessorsTranslationEditor"
+        if not os.path.isdir(self.configdir):
+            common.makeFolder(self.configdir)
+        if not os.path.isfile(self.configdir + self.appname + ".json"):
+            self.saveOptions()
+        else:
+            self.loadOptions()
 
         self.section = common.TranslationFile("LSuccessorsData/translations/en-US.xliff")
         self.section.preloadLookup("#ignore#comments")
@@ -199,7 +235,7 @@ class EditorApp(customtkinter.CTk):
         self.loadtext.grid(row=0, column=0, padx=10, pady=2)
         self.loadid = customtkinter.CTkTextbox(self.topframe, width=120, height=35)
         self.loadid.grid(row=0, column=1, padx=10, pady=2)
-        self.loadid.insert(tkinter.END, "bin///605461")
+        self.loadid.insert(tkinter.END, self.options.cursor)
         self.loadbutton = customtkinter.CTkButton(self.topframe, border_width=2, width=70, text="Load", command=self.load)
         self.loadbutton.grid(row=0, column=2, padx=10, pady=2)
         self.savebutton = customtkinter.CTkButton(self.topframe, border_width=2, width=70, text="Save", command=self.save)
@@ -216,9 +252,26 @@ class EditorApp(customtkinter.CTk):
         self.editorframe.grid(row=1, column=0, sticky="nsew")
         self.load()
 
+    def loadOptions(self):
+        with open(self.configdir + self.appname + ".json", "r") as f:
+            data = f.read()
+        try:
+            options = json.loads(data)
+            self.options = EditorOptions(**options)
+        except (json.decoder.JSONDecodeError, TypeError):
+            self.options = EditorOptions()
+            self.saveOptions()
+
+    def saveOptions(self):
+        with open(self.configdir + self.appname + ".json", "w") as f:
+            f.write(json.dumps(self.options.__dict__, indent=2))
+
     def load(self):
         self.save()
-        self.editorframe.loadLines(self.section, self.loadid.get(1.0, tkinter.END).strip())
+        newcursor = self.loadid.get(1.0, tkinter.END).strip()
+        self.editorframe.loadLines(self.section, newcursor)
+        self.options.cursor = newcursor
+        self.saveOptions()
 
     def prev(self):
         if self.editorframe.currentoff == -1 or self.editorframe.currentoff < 10:
