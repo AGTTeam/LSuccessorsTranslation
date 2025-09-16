@@ -96,9 +96,14 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
         wordwrapped = common.wordwrap(text, self.glyphs, self.wordwrap[self.usebg], format_bin.detectTextCode, strip=False)
         if (wordwrapped.count("|") > 1 and self.usebg == 2) or (wordwrapped.count("|") > 2 and self.usebg == 0):
             old_img = img
-            img = Image.new("RGBA", (old_img.width, old_img.height * 2))
+            img = Image.new("RGBA", (old_img.width, self.backgrounds[self.usebg].height * 2))
             img.paste(old_img, (0, 0))
             img.paste(old_img, (0, old_img.height))
+        if wordwrapped.count("|") > 3 and self.usebg == 2:
+            old_img = img
+            img = Image.new("RGBA", (old_img.width, self.backgrounds[self.usebg].height * 3))
+            img.paste(old_img, (0, 0))
+            img.paste(self.backgrounds[self.usebg], (0, old_img.height))
         i = 0
         while i < len(wordwrapped):
             c = wordwrapped[i]
@@ -118,6 +123,8 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
                 currentx = startx
                 if (self.usebg == 2 and currenty == starty + self.lineheight[self.usebg]) or (self.usebg == 0 and currenty == starty + self.lineheight[self.usebg] * 2):
                     currenty = self.backgrounds[self.usebg].height + starty
+                elif self.usebg == 2 and currenty == self.backgrounds[self.usebg].height + starty + self.lineheight[self.usebg]:
+                    currenty = self.backgrounds[self.usebg].height * 2 + starty
                 else:
                     currenty += self.lineheight[self.usebg]
                 i += 1
@@ -236,7 +243,7 @@ class EditorApp(customtkinter.CTk):
             for i in range(10):
                 offset = self.section.offsets[self.editorframe.idfile][self.editorframe.currentoff + i]
                 original = self.section.offlookup[offset]
-                self.section.setEntry(original, self.editorframe.idfile, offset, self.editorframe.alltexts[i][0]._textbox.get(1.0, tkinter.END).strip())
+                self.section.setEntry(original, self.editorframe.idfile, offset, self.editorframe.alltexts[i][0]._textbox.get(1.0, tkinter.END).strip().replace("\r\n", "|").replace("\n", "|"))
             self.section.save("LSuccessorsData/translations/en-US.xliff")
 
     def changebg(self, choice):
