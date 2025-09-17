@@ -251,6 +251,8 @@ class EditorApp(customtkinter.CTk):
         self.bgcombo.grid(row=0, column=7, padx=10, pady=0)
         self.editorframe = EditorFrame(master=self, width=256+400+400+50, height=600, corner_radius=0, fg_color="transparent")
         self.editorframe.grid(row=1, column=0, sticky="nsew")
+        self.editorframe.usebg = self.options.usebg
+        self.bgcombo.set(self.choices[self.options.usebg])
         self.load()
 
     def loadOptions(self):
