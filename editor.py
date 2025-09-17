@@ -26,8 +26,9 @@ class CustomTextBox(customtkinter.CTkTextbox):
 
 
 class EditorOptions:
-    def __init__(self, cursor="bin///605461"):
+    def __init__(self, cursor="bin///605461", usebg=2):
         self.cursor = cursor
+        self.usebg = usebg
 
 
 class EditorFrame(customtkinter.CTkScrollableFrame):
@@ -113,7 +114,7 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
         if wordwrapped.count("<<") > 0:
             wordwrapped = common.centerLines(wordwrapped, self.glyphs, format_bin.centering, format_bin.detectTextCode, default=0xc, linebreak="|", centercode="<<")
         if wordwrapped.count(">>") == 0:
-            if (wordwrapped.count("|") > 1 and self.usebg == 2) or (wordwrapped.count("|") > 2 and self.usebg == 0):
+            if wordwrapped.count("|") > 1 and self.usebg == 2:
                 img = self.extendImage(img)
             if wordwrapped.count("|") > 3 and self.usebg == 2:
                 img = self.extendImage(img)
@@ -146,7 +147,7 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
                 continue
             if c == "|":
                 currentx = startx
-                if (self.usebg == 2 and currenty == starty + self.lineheight[self.usebg]) or (self.usebg == 0 and currenty == starty + self.lineheight[self.usebg] * 2):
+                if self.usebg == 2 and currenty == starty + self.lineheight[self.usebg]:
                     currenty = self.backgrounds[self.usebg].height + starty
                 elif self.usebg == 2 and currenty == self.backgrounds[self.usebg].height + starty + self.lineheight[self.usebg]:
                     currenty = self.backgrounds[self.usebg].height * 2 + starty
@@ -301,4 +302,5 @@ class EditorApp(customtkinter.CTk):
 
     def changebg(self, choice):
         self.editorframe.usebg = self.choices.index(choice)
+        self.options.usebg = self.editorframe.usebg
         self.load()
