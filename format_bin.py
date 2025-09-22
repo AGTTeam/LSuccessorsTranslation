@@ -7,7 +7,7 @@ pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
 freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
 wordwrap2 = 160  # used for other lines
-wordwrap3 = 147  # used for top-screen lines during gameplay
+wordwrap3 = 152  # used for top-screen lines during gameplay
 centering = 200  # used for centering lines starting with <<
 
 
