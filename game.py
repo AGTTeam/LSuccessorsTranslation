@@ -123,7 +123,7 @@ def readImage(infolder, file, extension):
     cell = None
     width = height = 0
     i = int(file[4:-5].split("_")[0])
-    #if i < 628 or i > 715:
+    #if i != 558:
     #    return None, None, None, None, None, None, None, None
     if extension == ".ICHR":
         palettefile = file.replace(extension, ".IPAL")
@@ -176,6 +176,8 @@ def readImage(infolder, file, extension):
             width = image.width
             height = image.height
             if i == 28 or (i >= 260 and i <= 293):
+                image.lineal = False
+            if i == 558:
                 image.lineal = False
             if i == 668:
                 image.lineal = True
