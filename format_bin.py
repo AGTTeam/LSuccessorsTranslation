@@ -27,7 +27,12 @@ def repack(data):
             ascii = 0x20
             for c in section:
                 charid = c["name"].replace("～", "〜").encode("cp932")
-                charlen = int(c["value"])
+                if "," in c["value"]:
+                    valuesplit = c["value"].split(",")
+                    charlen = int(valuesplit[0])
+                    glyphs[valuesplit[1]] = common.FontGlyph(0, charlen, charlen)
+                else:
+                    charlen = int(c["value"])
                 f.write(charid)
                 f.writeUShort(charlen)
                 glyphs[chr(ascii)] = common.FontGlyph(0, charlen, charlen)

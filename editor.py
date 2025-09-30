@@ -76,7 +76,14 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
             currentchar = 0x20
             for fontlen in section:
                 charid = fontlen["name"].replace("～", "〜")
-                charlen = int(fontlen["value"])
+                if "," in fontlen["value"]:
+                    valuesplit = fontlen["value"].split(",")
+                    charlen = int(valuesplit[0])
+                    self.chartolen[valuesplit[1]] = charlen
+                    self.chartosjis[valuesplit[1]] = charid
+                    self.glyphs[valuesplit[1]] = common.FontGlyph(0, charlen, charlen)
+                else:
+                    charlen = int(fontlen["value"])
                 self.chartolen[charid] = charlen
                 self.chartosjis[chr(currentchar)] = charid
                 self.glyphs[chr(currentchar)] = common.FontGlyph(0, charlen, charlen)
@@ -120,13 +127,7 @@ class EditorFrame(customtkinter.CTkScrollableFrame):
                 img = self.extendImage(img)
         i = 0
         while i < len(wordwrapped):
-            c = wordwrapped[i]
-            c = c.replace("ï", "$")
-            c = c.replace("‘", "[")
-            c = c.replace("’", "]")
-            c = c.replace("“", "{")
-            c = c.replace("”", "}")
-            c = c.replace("～", "〜")
+            c = wordwrapped[i].replace("～", "〜")
             if c == "#":
                 break
             if c == ">" and wordwrapped[i+1] == ">":
