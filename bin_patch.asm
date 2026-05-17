@@ -9,9 +9,9 @@ BUFFER_MEM_SIZE equ 0x200
 BUFFER_DIFF equ 0xd0
 BUFFER_LENGTH equ 0x90
 
-.open "LSuccessorsData/repack/arm9.bin",0x021e2600 - 0xd8160
+.open "LSuccessorsData/repack/arm9.bin",0x021e2700 - 0xd8160
   .orga 0xd8160
-  .area 0x600
+  .area 0x700
 
   ;ASCII to SJIS lookup table, also includes VWF values
   SJIS_LOOKUP:
@@ -325,7 +325,57 @@ BUFFER_LENGTH equ 0x90
   add r1,r1,0x1
   mov r14,0x0
   b REPLACE_CC_SPACE_RET
-  
+
+  ;check_text_codes4's final-copy path (LAB_02016238) copies bytes plainly
+  ;and doesn't substitute \a, so <name> renders literally when parse_line_strings
+  ;returns 0 (English strings with <2 newlines). This replaces that copy
+  ;and calls FUN_02015e8c on 0x5c 0x61, mirroring path B's substitution
+  CHECK_CODES4_FINAL_COPY:
+  ldr r0,=0x020d8af4
+  ldrb r0,[r0]
+  cmp r0,0x2
+  bne @@fallback
+  ldr r0,=0x020d9af4
+  ldrb r0,[r0,0x335]
+  cmp r0,0x0
+  bne @@fallback
+  cmp r8,0x8
+  bne @@fallback
+  ;Substituting copy: src=r9+r10, dest=sp+8
+  add r4,r9,r10
+  add r5,sp,0x8
+  mov r6,0x0
+  @@loop:
+  ldrb r0,[r4]
+  strb r0,[r5,r6]
+  cmp r0,0x0
+  beq @@done
+  cmp r0,0x5c
+  bne @@advance
+  ldrb r0,[r4,0x1]
+  cmp r0,0x61
+  bne @@advance
+  ;FUN_02015e8c(dest_base=r5, dest_offset=r6, context_byte=DAT_020d8af6)
+  mov r0,r5
+  mov r1,r6
+  ldr r12,=0x020d8af4
+  ldrb r2,[r12,0x2]
+  bl 0x02015e8c
+  mov r6,r0
+  add r4,r4,0x2
+  b @@check_limit
+  @@advance:
+  add r6,r6,0x1
+  add r4,r4,0x1
+  @@check_limit:
+  cmp r6,BUFFER_LENGTH
+  blt @@loop
+  @@done:
+  b 0x02016268
+  @@fallback:
+  b 0x02016238
+  .pool
+
   ;History string, let's just hardcode it
   HISTORY_STR:
   mov r12,0x54 ;"T"
@@ -826,6 +876,12 @@ BUFFER_LENGTH equ 0x90
   add r1,r1,0x1
   ;add r4,r4,0x2
   add r4,r4,0x1
+
+  ;Redirect the parse_line_strings==0 branch in check_text_codes4 from the
+  ;plain final-copy at LAB_02016238 to our function
+  .org 0x02016128
+  ;beq 0x02016238
+  beq CHECK_CODES4_FINAL_COPY
 
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2

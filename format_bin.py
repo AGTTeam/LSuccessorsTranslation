@@ -4,7 +4,7 @@ from hacktools import common, nds
 
 binrange = [(445000, 884000)]
 pointerranges = [(0xa2a34, 0xba5b4, False), (0x6cb44, 0x786a4, True)]
-freeranges = [(0xd8160+0x600, 0xd8160+0x8c500, True)]
+freeranges = [(0xd8160+0x700, 0xd8160+0x8c500, True)]
 wordwrap = 190  # used for script lines
 wordwrap2 = 160  # used for other lines
 wordwrap3 = 152  # used for top-screen lines during gameplay
@@ -42,8 +42,8 @@ def repack(data):
             f.writeUShort(0xc)
 
     # Expand and repack the binary file
-    nds.expandBIN(binin, binout, headerin, headerout, 0x8c500, 0x021e2600)
-    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0x021e2600-0xd8160, nocopy=True)
+    nds.expandBIN(binin, binout, headerin, headerout, 0x8c500, 0x021e2700)
+    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0x021e2700-0xd8160, nocopy=True)
     common.armipsPatch(common.bundledFile("bin_patch.asm"))
 
 
