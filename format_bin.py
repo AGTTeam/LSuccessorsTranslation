@@ -147,7 +147,7 @@ def postFormatString(binstr, pre, post):
         binstr = common.wordwrap(binstr, glyphs, wordwrap, detectTextCode, default=0xc)
         binstr = binstr.replace("|", "\\n")
         linebreak = "\\n"
-    elif "|" not in binstr:
+    elif "|" not in binstr and "\\n" not in binstr:
         binstr = common.wordwrap(binstr, glyphs, wordwrap2, detectTextCode, default=0xc, strip=False)
     if binstr.count("<<") > 0:
         binstr = common.centerLines(binstr, glyphs, centering, detectTextCode, default=0xc, linebreak=linebreak, centercode="<<")
