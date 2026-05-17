@@ -141,6 +141,8 @@ def detectTextCode(s, i=0):
 def postFormatString(binstr, pre, post):
     global glyphs
     linebreak = "|"
+    binstroriginal = binstr
+    lbcount = binstr.count("|")
     if len(pre) > 0 and ord(pre[:1]) >= 0x30 and ord(pre[:1]) <= 0x39:
         binstr = common.wordwrap(binstr, glyphs, wordwrap3, detectTextCode, default=0xc)
     elif (binstr + post).endswith(">>") or (binstr + post).endswith("<end>") or (binstr + post).endswith("\\p"):
@@ -153,6 +155,8 @@ def postFormatString(binstr, pre, post):
         binstr = common.centerLines(binstr, glyphs, centering, detectTextCode, default=0xc, linebreak=linebreak, centercode="<<")
         # Replace every 6 spaces with a Japanese one
         binstr = binstr.replace("      ", "　")
+    if lbcount > 0 and binstr.count(linebreak) != lbcount:
+        common.logWarning(f"Linebreak count mismatch {lbcount}/{binstr.count(linebreak)} {binstroriginal} -> {binstr}")
     binstr = pre + binstr + post
     binstr = binstr.replace(">>", "\\p\\P")
     binstr = binstr.replace("<end>", "\\p\\E")
