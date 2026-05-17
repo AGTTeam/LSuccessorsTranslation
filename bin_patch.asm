@@ -376,6 +376,35 @@ BUFFER_LENGTH equ 0x90
   b 0x02016238
   .pool
 
+  ;strlen function that takes VWF into account
+  ;r0 = pointer to string
+  VWF_STRLEN:
+  mov r2,0
+  @@loop:
+  ldrb r1,[r0],0x1
+  cmp r1,0x0
+  beq @@ret
+  cmp r1,0x7f
+  bgt @@sjis
+  cmp r1,0x20
+  blt @@sjis
+  ldr r3,=SJIS_LOOKUP
+  sub r1,r1,0x20
+  lsl r1,r1,0x2
+  add r1,r1,r3
+  ldrb r1,[r1,0x2]
+  add r2,r2,r1
+  b @@loop
+  @@sjis:
+  add r2,r2,0xc
+  add r0,r0,0x1
+  b @@loop
+  @@ret:
+  mov r0,r2
+  bx lr
+  .pool
+
+
   ;History string, let's just hardcode it
   HISTORY_STR:
   mov r12,0x54 ;"T"
@@ -882,6 +911,19 @@ BUFFER_LENGTH equ 0x90
   .org 0x02016128
   ;beq 0x02016238
   beq CHECK_CODES4_FINAL_COPY
+
+  ;Patch strlen call for nameplates to call our function
+  .org 0x0204cb90
+  ;bl 0x02067084
+  bl VWF_STRLEN
+  ;Don't multiply by 0xc here, we already return the adjusted length
+  .org 0x0204cba4
+  ;mov r0,0xc
+  mov r0,0x1
+  ;Also don't divide by 2 here
+  .org 0x0204cba0
+  ;mov r1,r0,asr 0x1
+  mov r1,r0
 
   ;There's several places where the code reads codes supposing they're aligned, so we need to edit them all
   ;As well as increasing the script counter by 2
