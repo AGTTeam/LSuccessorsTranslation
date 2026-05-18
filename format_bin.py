@@ -1,4 +1,5 @@
 import codecs
+import os
 import game
 from hacktools import common, nds
 
@@ -43,8 +44,47 @@ def repack(data):
 
     # Expand and repack the binary file
     nds.expandBIN(binin, binout, headerin, headerout, 0x8c500, 0x021e2700)
-    nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=0x021e2700-0xd8160, nocopy=True)
+    injectoffset = 0x021e2700 - 0xd8160
+    updatedranges = nds.repackBIN(binrange, freeranges, game.detectEncodedString, game.writeEncodedString, preformat=preFormatString, postformat=postFormatString, binin=binin, binout=binout, binfile=binfile, injectstart=injectoffset, nocopy=True)
+    writeExtraStrings(data, binout, updatedranges, injectoffset)
     common.armipsPatch(common.bundledFile("bin_patch.asm"))
+
+
+def writeExtraStrings(data, binout, updatedranges, injectoffset):
+    extrafile = data + "extrastrings.txt"
+    if not updatedranges or not os.path.isfile(extrafile):
+        return
+    injectrange = None
+    for r in updatedranges:
+        if len(r) >= 3 and r[2] is True:
+            injectrange = r
+            break
+    if injectrange is None:
+        common.logError("No inject freerange found for extra strings")
+        return
+    common.logMessage("Writing extra strings from", extrafile, "...")
+    with codecs.open(extrafile, "r", "utf-8") as ef:
+        section = common.getSection(ef, "", inorder=True)
+    with common.Stream(binout, "r+b") as f:
+        for entry in section:
+            hexstr = entry["name"]
+            s = postFormatString(entry["value"], "", "")
+            ptrloc = int(hexstr.strip(), 16)
+            if injectrange[0] >= injectrange[1]:
+                common.logError("No room left in inject range for extra string", s)
+                return
+            f.seek(injectrange[0])
+            startpos = f.tell()
+            game.writeEncodedString(f, s, 0, "cp932")
+            f.seek(-1, 1)
+            if f.readByte() != 0:
+                f.writeZero(1)
+            injectrange[0] = f.tell()
+            newptr = startpos + injectoffset
+            f.seek(ptrloc - 0x02000000)
+            f.writeUInt(newptr)
+            common.logDebug("Wrote extra string at", common.toHex(startpos), "pointer at", common.toHex(ptrloc), "->", common.toHex(newptr))
+    common.logMessage("Done!")
 
 
 def extract(data):
