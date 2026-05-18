@@ -42,6 +42,11 @@ def repack(data):
         colors = extractUniqueColors(pngpath)
 
         if palfile.endswith(".IPAL"):
+            # Some IPALs pack multiple sub-palettes into one 256-color block; the trailing
+            # regions are read by other files for unrelated rendering
+            ipal_effective_colors = {
+                "file00266.IPAL": 128,
+            }
             with common.Stream(dstpal, "rb+") as f:
                 f.seek(4)
                 f.readUInt()  # depth
@@ -52,6 +57,8 @@ def repack(data):
                 if pallen > filesize - 16:
                     pallen = filesize - 16
                 colornum = pallen // 2
+                if palfile in ipal_effective_colors:
+                    colornum = ipal_effective_colors[palfile]
                 f.seek(16 + 2)
                 wrote = 1
                 for c in colors:
