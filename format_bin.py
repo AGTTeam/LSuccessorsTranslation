@@ -38,6 +38,7 @@ def repack(data):
                 f.writeUShort(charlen)
                 glyphs[chr(ascii)] = common.FontGlyph(0, charlen, charlen)
                 glyphs[charid] = common.FontGlyph(0, charlen, charlen)
+                glyphs[c["name"]] = common.FontGlyph(0, charlen, charlen)
                 ascii += 1
             f.writeUShort(0)
             f.writeUShort(0xc)
