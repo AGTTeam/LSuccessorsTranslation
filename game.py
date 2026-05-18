@@ -167,6 +167,12 @@ def readImage(infolder, file, extension, checkpal=False):
             palettefile = "file00683.IPAL"
         elif i == 700 or i == 701:
             palettefile = "file00699.IPAL"
+        elif i == 154:
+            palettefile = "file00155.IPAL"
+        elif i == 178:
+            palettefile = "file00179.IPAL"
+        elif i == 180:
+            palettefile = "file00181.IPAL"
         elif not os.path.isfile(infolder + palettefile) and "_" in file:
             palettefile = file.split("_")[0] + ".IPAL"
         mapfile = ""
