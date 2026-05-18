@@ -4,6 +4,20 @@ from PIL import Image
 from hacktools import common, nitro
 
 
+palettereplace = {
+    "file00069.IPAL": "file00069.png",
+    "file00093.IPAL": "file00093.png",
+    "file00095.IPAL": "file00095.png",
+    "file00112.IPAL": "file00112.png",
+    "file00136.IPAL": "file00136.png",
+    "file00138.IPAL": "file00138.png",
+    "file00266.IPAL": "file00266.png",
+    "file00722.NCLR": "file00722.png",
+    "file00746.NCLR": "file00746.png",
+    "file00748.NCLR": "file00748.png",
+}
+
+
 def detectEncodedString(f, encoding):
     return common.detectEncodedString(f, "cp932", [0x25, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x5c, 0x61, 0x63, 0x67, 0x6e])
 
@@ -120,7 +134,14 @@ def readNitroGraphicICHR(palettefile, tilefile, mapfile):
     return palettes, ichr, iscr
 
 
-def readImage(infolder, file, extension):
+def readImage1(infolder, file, extension):
+    return readImage(infolder, file, extension, False)
+
+def readImage2(infolder, file, extension):
+    return readImage(infolder, file, extension, True)
+
+
+def readImage(infolder, file, extension, checkpal=False):
     cell = None
     width = height = 0
     i = int(file[4:-5].split("_")[0])
@@ -169,8 +190,11 @@ def readImage(infolder, file, extension):
         mapfile = file.replace(extension, ".NSCR")
         cellfile = file.replace(extension, ".NCER")
     # Read the image
+    palettepath = infolder + palettefile
+    if checkpal and palettefile in palettereplace:
+        palettepath = infolder.replace("extract_", "repack_") + palettefile
     if extension == ".ICHR":
-        palettes, image, map = readNitroGraphicICHR(infolder + palettefile, infolder + file, infolder + mapfile)
+        palettes, image, map = readNitroGraphicICHR(palettepath, infolder + file, infolder + mapfile)
         if map is not None:
             image.lineal = False
         if image is not None:
@@ -183,7 +207,7 @@ def readImage(infolder, file, extension):
             if i == 668:
                 image.lineal = True
     elif extension == ".NCGR":
-        palettes, image, map, cell, width, height = nitro.readNitroGraphic(infolder + palettefile, infolder + file, infolder + mapfile, infolder + cellfile)
+        palettes, image, map, cell, width, height = nitro.readNitroGraphic(palettepath, infolder + file, infolder + mapfile, infolder + cellfile)
     return palettes, image, map, cell, width, height, mapfile, cellfile
 
 
@@ -199,4 +223,3 @@ def writeImage(workfolder, infolder, outfolder, file, image, palettes, map, cell
     elif extension == ".NCGR":
         return image, palettes, map, cell, width, height, False
     return None, None, None, None, 0, 0, False
-

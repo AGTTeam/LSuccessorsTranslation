@@ -4,7 +4,7 @@ import game
 from editor import EditorApp
 from hacktools import common, nds, nitro
 
-version = "0.9.0"
+version = "1.0.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
@@ -33,7 +33,7 @@ def extract(rom, bin, font, img):
         import format_font
         format_font.extract(data)
     if all or img:
-        nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", [".NCGR", ".ICHR"], game.readImage)
+        nitro.extractIMG(data + "extract_DATA/", data + "out_IMG/", [".NCGR", ".ICHR"], game.readImage1)
 
 
 @common.cli.command()
@@ -47,7 +47,9 @@ def repack(no_rom, bin, font, img):
         import format_font
         format_font.repack(data)
     if all or img:
-        nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", [".NCGR", ".ICHR"], game.readImage, game.writeImage)
+        import format_palette
+        format_palette.repack(data)
+        nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", [".NCGR", ".ICHR"], game.readImage2, game.writeImage)
     if all or img or font:
         import format_archive
         format_archive.repack(data)
