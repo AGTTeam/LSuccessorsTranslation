@@ -402,6 +402,15 @@ BUFFER_LENGTH equ 0x90
   b 0x02016238
   .pool
 
+  ;Path B in check_text_codes4 eagerly writes dest[r1+1] = src[r4+1] as a
+  ;look-ahead each iteration. When the loop exits on r5 >= 2 (2 newlines), the
+  ;last look-ahead byte is the first char of the next line, zero it here
+  PATHB_NL_EXIT:
+  mov r0,0x0
+  strb r0,[r9,r1]
+  b 0x02016210
+  .pool
+
   ;strlen function that takes VWF into account
   ;r0 = pointer to string
   VWF_STRLEN:
@@ -938,6 +947,12 @@ BUFFER_LENGTH equ 0x90
   ;beq 0x02016238
   beq CHECK_CODES4_FINAL_COPY
 
+  ;Path B's look-ahead leaves a stale byte (first char of next line) in the
+  ;chunk buffer when exiting on 2 newlines, handle it here
+  .org 0x02016194
+  ;bge 0x02016210
+  bge PATHB_NL_EXIT
+
   ;Patch strlen call for nameplates to call our function
   .org 0x0204cb90
   ;bl 0x02067084
@@ -1121,11 +1136,6 @@ BUFFER_LENGTH equ 0x90
     .org 0x02007210
     ;sub r1,r7,0x1
     mov r1,r7
-
-    ;Fix third line being drawn by print_game_top_str in first textbox
-    .org 0x02007130
-    ;b 0x020071c4
-    b NL_END
 
   ;BIN print function at 0x02014e38 (print_pre_game_str)
     .org 0x02014e44
