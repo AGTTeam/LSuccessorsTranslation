@@ -233,6 +233,10 @@ BUFFER_LENGTH equ 0x90
     ;string pointer (r7) to correctly handle mixed ASCII/SJIS characters
     VWF_STOP_CHECK:
     .dw 0
+    ;Count of newlines consumed in current print_game_top_str call
+    ;Used to bail before drawing chars past the 2nd \n (textbox is 2 lines)
+    VWF_NEWLINE_COUNT:
+    .dw 0
     .macro increase_stop_check,amount
       push {r0-r1}
       ldr r0,=VWF_STOP_CHECK
@@ -249,9 +253,31 @@ BUFFER_LENGTH equ 0x90
     VWF_BIN_START3:
     add r0,r2,r0
     increase_stop_check 0x0
+    push {r0-r1}
+    ldr r0,=VWF_NEWLINE_COUNT
+    mov r1,0x0
+    str r1,[r0]
+    pop {r0-r1}
     cmp r2,0x0
     bxgt lr
     bin_reset 0x2,0x0
+    .pool
+
+    ;After consuming a \n, increment newline count. If we've seen 2, skip the
+    ;rest of this frame's draw by jumping to LAB_0200735c so the extra
+    ;byte after the 2nd \n never renders
+    NL_END:
+    push {r0-r1}
+    ldr r0,=VWF_NEWLINE_COUNT
+    ldr r1,[r0]
+    add r1,r1,0x1
+    str r1,[r0]
+    cmp r1,0x2
+    pop {r0-r1}
+    blt @@cont
+    b 0x0200735c
+    @@cont:
+    b 0x020071c4
     .pool
 
     VWF_BIN_LINEBREAK3:
@@ -1095,6 +1121,11 @@ BUFFER_LENGTH equ 0x90
     .org 0x02007210
     ;sub r1,r7,0x1
     mov r1,r7
+
+    ;Fix third line being drawn by print_game_top_str in first textbox
+    .org 0x02007130
+    ;b 0x020071c4
+    b NL_END
 
   ;BIN print function at 0x02014e38 (print_pre_game_str)
     .org 0x02014e44
