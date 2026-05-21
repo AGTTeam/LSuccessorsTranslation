@@ -4,7 +4,7 @@ import game
 from editor import EditorApp
 from hacktools import common, nds, nitro
 
-version = "1.0.0"
+version = "1.1.0"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
