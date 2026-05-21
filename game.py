@@ -4,6 +4,11 @@ from PIL import Image
 from hacktools import common, nitro
 
 
+ipal_effective_colors = {
+    "file00266.IPAL": 128,
+}
+
+
 palettereplace = {
     "file00069.IPAL": "file00069.png",
     "file00093.IPAL": "file00093.png",

@@ -1,3 +1,4 @@
+import glob
 import os
 from PIL import Image
 from hacktools import common
@@ -9,20 +10,32 @@ def packBGR555(color):
     return (b << 10) | (g << 5) | r
 
 
-def extractUniqueColors(pngpath):
-    img = Image.open(pngpath).convert("RGBA")
-    pixels = img.load()
+def extractUniqueColors(pngpaths):
+    if isinstance(pngpaths, str):
+        pngpaths = [pngpaths]
     seen = set()
     ordered = []
-    for y in range(img.height):
-        for x in range(img.width):
-            c = pixels[x, y]
-            key = (c[0] & 0xF8, c[1] & 0xF8, c[2] & 0xF8)
-            if key in seen:
-                continue
-            seen.add(key)
-            ordered.append((c[0], c[1], c[2], 0xFF))
+    for pngpath in pngpaths:
+        img = Image.open(pngpath).convert("RGBA")
+        pixels = img.load()
+        for y in range(img.height):
+            for x in range(img.width):
+                c = pixels[x, y]
+                key = (c[0] & 0xf8, c[1] & 0xf8, c[2] & 0xf8)
+                if key in seen:
+                    continue
+                seen.add(key)
+                ordered.append((c[0], c[1], c[2], 0xff))
     return ordered
+
+
+def collectImageVariants(workfolder, mainpng):
+    base = os.path.splitext(mainpng)[0]
+    mainpath = workfolder + mainpng
+    paths = [mainpath] if os.path.isfile(mainpath) else []
+    for p in sorted(glob.glob(workfolder + base + "_*.png")):
+        paths.append(p.replace("\\", "/"))
+    return paths
 
 
 def repack(data):
@@ -34,19 +47,16 @@ def repack(data):
     for palfile in game.palettereplace:
         srcpal = palin + palfile
         dstpal = palout + palfile
-        pngpath = workfolder + game.palettereplace[palfile]
-        if not os.path.isfile(pngpath):
-            common.logWarning("PNG missing for " + palfile + " -> " + pngpath)
+        pngpaths = collectImageVariants(workfolder, game.palettereplace[palfile])
+        if not pngpaths:
+            common.logWarning("PNG missing for " + palfile + " -> " + workfolder + game.palettereplace[palfile])
             continue
         common.copyFile(srcpal, dstpal)
-        colors = extractUniqueColors(pngpath)
+        colors = extractUniqueColors(pngpaths)
 
         if palfile.endswith(".IPAL"):
             # Some IPALs pack multiple sub-palettes into one 256-color block; the trailing
             # regions are read by other files for unrelated rendering
-            ipal_effective_colors = {
-                "file00266.IPAL": 128,
-            }
             with common.Stream(dstpal, "rb+") as f:
                 f.seek(4)
                 f.readUInt()  # depth
@@ -57,8 +67,8 @@ def repack(data):
                 if pallen > filesize - 16:
                     pallen = filesize - 16
                 colornum = pallen // 2
-                if palfile in ipal_effective_colors:
-                    colornum = ipal_effective_colors[palfile]
+                if palfile in game.ipal_effective_colors:
+                    colornum = game.ipal_effective_colors[palfile]
                 f.seek(16 + 2)
                 wrote = 1
                 for c in colors:
@@ -70,7 +80,7 @@ def repack(data):
                     f.writeUShort(0)
                     wrote += 1
                 if len(colors) > colornum - 1:
-                    common.logWarning(palfile + " has " + str(len(colors)) + " unique colors, truncated to " + str(colornum - 1))
+                    common.logError(palfile + " has " + str(len(colors)) + " unique colors, truncated to " + str(colornum - 1))
         else:
             with common.Stream(dstpal, "rb+") as f:
                 f.seek(20)
@@ -105,7 +115,7 @@ def repack(data):
                         f.writeUShort(0)
                         wrote += 1
                 if len(colors) > colornum - 1:
-                    common.logWarning(palfile + " has " + str(len(colors)) + " unique colors, truncated to " + str(colornum - 1))
+                    common.logError(palfile + " has " + str(len(colors)) + " unique colors, truncated to " + str(colornum - 1))
     common.logMessage("Done!")
 
 

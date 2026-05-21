@@ -64,6 +64,50 @@ def repack(no_rom, bin, font, img):
 
 
 @common.cli.command(hidden=True)
+def quantize():
+    import format_palette
+    workquant = data + "work_IMG/"
+    outquant = data + "quantized_TEMP/"
+
+    groups = {}
+    group_colors = {}
+    for palfile, mainpng in game.palettereplace.items():
+        prefix = os.path.splitext(mainpng)[0]
+        effective = game.ipal_effective_colors.get(palfile)
+        if effective is not None:
+            cur = group_colors.get(prefix)
+            group_colors[prefix] = effective if cur is None else min(cur, effective)
+        if prefix in groups:
+            continue
+        files = format_palette.collectImageVariants(workquant, mainpng)
+        if files:
+            groups[prefix] = files
+
+    if not os.path.isdir(outquant):
+        os.makedirs(outquant)
+
+    for prefix, files in groups.items():
+        group_n = group_colors.get(prefix, 256)
+        common.logMessage("Quantizing group " + prefix + " (" + str(len(files)) + " images, " + str(group_n) + " colors)")
+        temp_combined = outquant + "_tmp_combined_" + prefix + ".png"
+        temp_palette = outquant + "_tmp_palette_" + prefix + ".png"
+        try:
+            quoted_files = " ".join('"' + f + '"' for f in files)
+            common.execute('magick convert -append ' + quoted_files + ' "' + temp_combined + '"', show=False)
+            common.execute('pngquant --speed 3 ' + str(group_n) + ' "' + temp_combined + '" --output "' + temp_palette + '" --force', show=False)
+            for filepath in files:
+                outpath = outquant + os.path.basename(filepath)
+                common.execute('magick convert "' + filepath + '" +dither -remap "' + temp_palette + '" "' + outpath + '"', show=False)
+        finally:
+            if os.path.isfile(temp_combined):
+                os.remove(temp_combined)
+            if os.path.isfile(temp_palette):
+                os.remove(temp_palette)
+
+    common.logMessage("Done!")
+
+
+@common.cli.command(hidden=True)
 def editor():
     app = EditorApp(version)
     app.mainloop()
