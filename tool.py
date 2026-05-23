@@ -93,11 +93,14 @@ def quantize():
         temp_palette = outquant + "_tmp_palette_" + prefix + ".png"
         try:
             quoted_files = " ".join('"' + f + '"' for f in files)
-            common.execute('magick convert -append ' + quoted_files + ' "' + temp_combined + '"', show=False)
+            # Drop alpha before quantizing to avoid issues
+            common.execute('magick convert -append ' + quoted_files + ' -alpha off "' + temp_combined + '"', show=False)
             common.execute('pngquant --speed 3 ' + str(group_n) + ' "' + temp_combined + '" --output "' + temp_palette + '" --force', show=False)
             for filepath in files:
                 outpath = outquant + os.path.basename(filepath)
-                common.execute('magick convert "' + filepath + '" +dither -remap "' + temp_palette + '" "' + outpath + '"', show=False)
+                # Remap colors on the opaque image, then copy the source alpha mask back
+                common.execute('magick convert "' + filepath + '" -alpha off +dither -remap "' + temp_palette + '"'
+                               ' ( "' + filepath + '" -alpha extract ) -alpha off -compose CopyOpacity -composite "' + outpath + '"', show=False)
         finally:
             if os.path.isfile(temp_combined):
                 os.remove(temp_combined)
