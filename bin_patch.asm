@@ -351,6 +351,13 @@ BUFFER_LENGTH equ 0x90
   add r1,r1,0x1
   mov r14,0x0
   b REPLACE_CC_SPACE_RET
+  ;Same code for another location
+  REPLACE_CC_SPACE2:
+  mov r14,0x20
+  strb r14,[r0,r1]
+  add r1,r1,0x1
+  mov r14,0x0
+  b REPLACE_CC_SPACE_RET2
 
   ;check_text_codes4's final-copy path (LAB_02016238) copies bytes plainly
   ;and doesn't substitute \a, so <name> renders literally when parse_line_strings
@@ -1233,6 +1240,11 @@ BUFFER_LENGTH equ 0x90
   ;mov r14,0x0
   b REPLACE_CC_SPACE
   REPLACE_CC_SPACE_RET:
+  ;Same but for a different location
+  .org 0x02015ee8
+  ;mov r14,0x0
+  b REPLACE_CC_SPACE2
+  REPLACE_CC_SPACE_RET2:
 
   ;Change code characters cc/ar/nn/gr
   ;cc (0x63 0x63) -> \a (0x5c 0x61)
