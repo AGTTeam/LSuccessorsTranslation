@@ -1,3 +1,4 @@
+import glob
 import struct
 import os
 from PIL import Image
@@ -24,6 +25,21 @@ palettereplace = {
     "file00746.NCLR": "file00746.png",
     "file00748.NCLR": "file00748.png",
 }
+
+
+def recolorFiles(folder):
+    files = []
+    for palfile, png in palettereplace.items():
+        if os.path.isfile(folder + palfile) and palfile not in files:
+            files.append(palfile)
+        base = os.path.splitext(png)[0]
+        imgext = ".NCGR" if palfile.endswith(".NCLR") else ".ICHR"
+        candidates = [folder + base + imgext] + sorted(glob.glob(folder + base + "_*" + imgext))
+        for path in candidates:
+            name = os.path.basename(path)
+            if os.path.isfile(path) and name not in files:
+                files.append(name)
+    return files
 
 
 def detectEncodedString(f, encoding):

@@ -4,7 +4,7 @@ import game
 from editor import EditorApp
 from hacktools import common, nds, nitro
 
-version = "1.1.0"
+version = "1.1.1"
 data = "LSuccessorsData/"
 romfile = "dn2.nds"
 rompatch = data + "dn2_patched.nds"
@@ -41,7 +41,8 @@ def extract(rom, bin, font, img):
 @click.option("--bin", is_flag=True, default=False)
 @click.option("--font", is_flag=True, default=False)
 @click.option("--img", is_flag=True, default=False)
-def repack(no_rom, bin, font, img):
+@click.option("--no-recolor", is_flag=True, default=False, help="Keep recolored sprites at their original colors.")
+def repack(no_rom, bin, font, img, no_recolor):
     all = not bin and not img and not font
     if all or font:
         import format_font
@@ -52,7 +53,7 @@ def repack(no_rom, bin, font, img):
         nitro.repackIMG(data + "work_IMG/", data + "extract_DATA/", data + "repack_DATA/", [".NCGR", ".ICHR"], game.readImage2, game.writeImage)
     if all or img or font:
         import format_archive
-        format_archive.repack(data)
+        format_archive.repack(data, no_recolor)
     if all or bin or font:
         import format_bin
         format_bin.repack(data)
@@ -60,7 +61,8 @@ def repack(no_rom, bin, font, img):
         if os.path.isdir(replacefolder):
             common.mergeFolder(replacefolder, outfolder)
         nds.editBannerTitle(bannerfile, "DEATH NOTE\n~Successors to L~\nKonami Digital Entertainment")
-        nds.repackRom(romfile, rompatch, outfolder, patchfile)
+        outpatch = data + "patch-no-recolor.xdelta" if no_recolor else patchfile
+        nds.repackRom(romfile, rompatch, outfolder, outpatch)
 
 
 @common.cli.command(hidden=True)

@@ -1,12 +1,13 @@
 import codecs
 import filecmp
 import os
+import game
 from hacktools import common, nds
 
 knownformats = {"RNAN": "NANR", "RECN": "NCER", "RGCN": "NCGR", "RLCN": "NCLR", "ICHR": "ICHR", "IPAL": "IPAL", "ISCR": "ISCR"}
 
 
-def repack(data):
+def repack(data, no_recolor=False):
     infile = data + "extract/data/data/data.bin"
     outfile = data + "repack/data/data/data.bin"
     filelist = data + "filelist.txt"
@@ -17,6 +18,9 @@ def repack(data):
     common.logMessage("Repacking DATA ...")
     if os.path.isdir(replacefolder):
         common.mergeFolder(replacefolder, workfolder)
+    excluded = set(game.recolorFiles(outfolder)) if no_recolor else set()
+    if excluded:
+        common.logMessage("Skipping recolor for " + str(len(excluded)) + " files (--no-recolor)")
     filenum = 0x3cf9
     with codecs.open(filelist, "rb", "utf-8") as f:
         files = f.readlines()
@@ -27,12 +31,13 @@ def repack(data):
             for i in common.showProgress(range(filenum)):
                 filename = files[i].split(",")[0]
                 compressed = files[i].split(",")[1].strip() == "1"
+                srcfolder = outfolder if filename in excluded else workfolder
                 filepos = f.tell()
-                with common.Stream(workfolder + filename, "rb") as subf:
+                with common.Stream(srcfolder + filename, "rb") as subf:
                     uncompdata = subf.read()
                     if compressed:
                         # Check if the file is different first to speed up things
-                        if filecmp.cmp(workfolder + filename, outfolder + filename, shallow=False):
+                        if filecmp.cmp(srcfolder + filename, outfolder + filename, shallow=False):
                             fin.seek(4 + i * 8)
                             offset = fin.readUInt() * 4
                             length = fin.readUInt()
