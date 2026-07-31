@@ -1401,5 +1401,21 @@ BUFFER_LENGTH equ 0x90
     .asciiz "8"
     .org 0x0209b8e0
     .asciiz "9"
+  ;Fix the romanized name table at 0x0209b0e8, used for the map labels
+    ;entry 16, "ide"
+    .org 0x0209b178
+    .ascii "Ide      "
+    ;entry 24, "Shidoh"
+    .org 0x0209b1c0
+    .ascii "Sidoh    "
+    ;entry 32, "Rodd"
+    .org 0x0209b208
+    .ascii "Rod      "
+    ;entry 37, "Shaive"
+    .org 0x0209b235
+    .ascii "Shabe    "
+    ;entry 40, "Gang"
+    .org 0x0209b250
+    .ascii "Gangster "
 
 .close
